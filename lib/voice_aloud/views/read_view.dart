@@ -137,19 +137,26 @@ class ReadView extends ConsumerWidget {
                   ),
                 ),
                 Expanded(
-                  child:
-                      doc == null
-                          ? const _NoDocumentSelected()
-                          : _ReaderBody(
-                            document: doc,
-                            fontSize: settings.fontSize,
-                            titleColor: titleColor,
-                            textColor: textColor,
-                            onParagraphTap:
-                                (startOffset) async => ref
-                                    .read(playbackControllerProvider.notifier)
-                                    .seekTo(doc, startOffset),
-                          ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child:
+                          doc == null
+                              ? const _NoDocumentSelected()
+                              : _ReaderBody(
+                                document: doc,
+                                fontSize: settings.fontSize,
+                                titleColor: titleColor,
+                                textColor: textColor,
+                                onParagraphTap:
+                                    (startOffset) async => ref
+                                        .read(
+                                          playbackControllerProvider.notifier,
+                                        )
+                                        .seekTo(doc, startOffset),
+                              ),
+                    ),
+                  ),
                 ),
               ],
             ),

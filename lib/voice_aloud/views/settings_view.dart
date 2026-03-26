@@ -20,118 +20,125 @@ class SettingsView extends ConsumerWidget {
       color: VAColors.gray50,
       child: Padding(
         padding: const EdgeInsets.only(top: 32),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 128),
-          children: [
-            const Text(
-              'Settings',
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: VAColors.gray900,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                'Voice & Playback',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2.2,
-                  color: VAColors.gray400,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 128),
+              children: [
+                const Text(
+                  'Settings',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: VAColors.gray900,
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _Card(
-              child: Column(
-                children: [
-                  _ReadingSpeed(
-                    speed: settings.speechRate,
-                    onChanged:
-                        (value) => ref
-                            .read(settingsControllerProvider.notifier)
-                            .setSpeechRate(value),
+                const SizedBox(height: 32),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Voice & Playback',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.2,
+                      color: VAColors.gray400,
+                    ),
                   ),
-                  const _Divider(),
-                  _PitchSlider(
-                    value: settings.pitch,
-                    onChanged:
-                        (value) => ref
-                            .read(settingsControllerProvider.notifier)
-                            .setPitch(value),
-                  ),
-                  const _Divider(),
-                  _VolumeSlider(
-                    value: settings.volume,
-                    onChanged:
-                        (value) => ref
-                            .read(settingsControllerProvider.notifier)
-                            .setVolume(value),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                'Language & Voice (40+ Supported)',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2.2,
-                  color: VAColors.gray400,
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0x80F3F4F6)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0A000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 6),
+                const SizedBox(height: 12),
+                _Card(
+                  child: Column(
+                    children: [
+                      _ReadingSpeed(
+                        speed: settings.speechRate,
+                        onChanged:
+                            (value) => ref
+                                .read(settingsControllerProvider.notifier)
+                                .setSpeechRate(value),
+                      ),
+                      const _Divider(),
+                      _PitchSlider(
+                        value: settings.pitch,
+                        onChanged:
+                            (value) => ref
+                                .read(settingsControllerProvider.notifier)
+                                .setPitch(value),
+                      ),
+                      const _Divider(),
+                      _VolumeSlider(
+                        value: settings.volume,
+                        onChanged:
+                            (value) => ref
+                                .read(settingsControllerProvider.notifier)
+                                .setVolume(value),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Language & Voice (40+ Supported)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.2,
+                      color: VAColors.gray400,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0x80F3F4F6)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x0A000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _SettingsRow(
+                        title: 'Language',
+                        subtitle:
+                            settings.language.trim().isEmpty
+                                ? 'English, Chinese, French...'
+                                : settings.language,
+                        onTap:
+                            () =>
+                                _pickLanguage(context, ref, settings.language),
+                      ),
+                      const _InsetDivider(),
+                      _SettingsRow(
+                        title: 'Selected Voice',
+                        subtitle:
+                            settings.voiceName.trim().isEmpty
+                                ? 'Samantha (Enhanced)'
+                                : settings.voiceName,
+                        subtitleColor: VAColors.blue600,
+                        onTap: () => _pickVoice(context, ref, settings.language),
+                      ),
+                    ],
+                  ),
+                ),
+                if (settingsAsync.hasError) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    settingsAsync.error.toString(),
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ],
-              ),
-              child: Column(
-                children: [
-                  _SettingsRow(
-                    title: 'Language',
-                    subtitle:
-                        settings.language.trim().isEmpty
-                            ? 'English, Chinese, French...'
-                            : settings.language,
-                    onTap: () => _pickLanguage(context, ref, settings.language),
-                  ),
-                  const _InsetDivider(),
-                  _SettingsRow(
-                    title: 'Selected Voice',
-                    subtitle:
-                        settings.voiceName.trim().isEmpty
-                            ? 'Samantha (Enhanced)'
-                            : settings.voiceName,
-                    subtitleColor: VAColors.blue600,
-                    onTap: () => _pickVoice(context, ref, settings.language),
-                  ),
-                ],
-              ),
+              ],
             ),
-            if (settingsAsync.hasError) ...[
-              const SizedBox(height: 16),
-              Text(
-                settingsAsync.error.toString(),
-                style: const TextStyle(color: Colors.red),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -573,4 +580,3 @@ Future<void> _pickVoice(
     },
   );
 }
-

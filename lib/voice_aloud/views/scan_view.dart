@@ -438,12 +438,12 @@ class _ScanViewState extends ConsumerState<ScanView>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _GrayCircleButton(
+                          onTap: _pickFromGallery,
                           child: const LucideSvgIcon(
                             'image',
                             size: 20,
                             color: Colors.white,
                           ),
-                          onTap: _pickFromGallery,
                         ),
                         GestureDetector(
                           onTap: _capture,
@@ -464,11 +464,6 @@ class _ScanViewState extends ConsumerState<ScanView>
                           ),
                         ),
                         _GrayCircleButton(
-                          child: const LucideSvgIcon(
-                            'settings',
-                            size: 20,
-                            color: Colors.white,
-                          ),
                           onTap: () async {
                             final next = await showModalBottomSheet<bool>(
                               context: context,
@@ -484,13 +479,19 @@ class _ScanViewState extends ConsumerState<ScanView>
                                   child: SwitchListTile(
                                     title: const Text('Auto Scan'),
                                     value: _autoScan,
-                                    onChanged: (v) => Navigator.of(context).pop(v),
+                                    onChanged:
+                                        (v) => Navigator.of(context).pop(v),
                                   ),
                                 );
                               },
                             );
                             if (next != null) _setAutoScan(next);
                           },
+                          child: const LucideSvgIcon(
+                            'settings',
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -508,12 +509,12 @@ class _ScanViewState extends ConsumerState<ScanView>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _BlackCircleButton(
+                      onTap: _toggleTorch,
                       child: LucideSvgIcon(
                         'zap',
                         size: 20,
                         color: _torchOn ? VAColors.yellow400 : Colors.white,
                       ),
-                      onTap: _toggleTorch,
                     ),
                     GestureDetector(
                       onTap: () => _setAutoScan(!_autoScan),
@@ -545,12 +546,12 @@ class _ScanViewState extends ConsumerState<ScanView>
                       ),
                     ),
                     _BlackCircleButton(
+                      onTap: _toggleZoom,
                       child: const LucideSvgIcon(
                         'maximize',
                         size: 20,
                         color: Colors.white,
                       ),
-                      onTap: _toggleZoom,
                     ),
                   ],
                 ),

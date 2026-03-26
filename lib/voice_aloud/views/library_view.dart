@@ -21,115 +21,125 @@ class LibraryView extends ConsumerWidget {
       color: VAColors.libraryBackground,
       child: Padding(
         padding: const EdgeInsets.only(top: 32),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Library',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: VAColors.gray900,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => _showAddSheet(context, ref),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: VAColors.blue600,
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x4D2563EB),
-                            blurRadius: 18,
-                            offset: Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: LucideSvgIcon(
-                          'plus',
-                          size: 24,
-                          color: Colors.white,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Library',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          color: VAColors.gray900,
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 128),
-                children: [
-                  GestureDetector(
-                    onTap:
-                        () =>
-                            ref
-                                .read(appControllerProvider.notifier)
-                                .setTab(VoiceAloudTab.settings),
-                    child: const _CloudSyncBanner(),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(8, 0, 8, 16),
-                    child: Text(
-                      'Recent Documents',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.0,
-                        color: VAColors.gray400,
+                      GestureDetector(
+                        onTap: () => _showAddSheet(context, ref),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: VAColors.blue600,
+                            shape: BoxShape.circle,
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x4D2563EB),
+                                blurRadius: 18,
+                                offset: Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: LucideSvgIcon(
+                              'plus',
+                              size: 24,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  ...docs.when(
-                    data: (items) {
-                      if (items.isEmpty) return const [ _EmptyStateCard() ];
-                      return [
-                        for (final entry in items.indexed) ...[
-                          _DocumentCard(
-                            document: entry.$2,
-                            index: entry.$1,
-                            onTap: () async {
-                              await ref
-                                  .read(documentsControllerProvider.notifier)
-                                  .markOpened(entry.$2.id);
-                              ref
-                                  .read(appControllerProvider.notifier)
-                                  .openDocument(entry.$2.id);
-                            },
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 128),
+                    children: [
+                      GestureDetector(
+                        onTap:
+                            () =>
+                                ref
+                                    .read(appControllerProvider.notifier)
+                                    .setTab(VoiceAloudTab.settings),
+                        child: const _CloudSyncBanner(),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(8, 0, 8, 16),
+                        child: Text(
+                          'Recent Documents',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2.0,
+                            color: VAColors.gray400,
                           ),
-                          const SizedBox(height: 16),
-                        ],
-                      ];
-                    },
-                    loading:
-                        () => const [
-                          _LoadingStateCard(),
-                          SizedBox(height: 16),
-                          _LoadingStateCard(),
-                        ],
-                    error:
-                        (e, _) => [
-                          _ErrorStateCard(
-                            message: e.toString(),
-                            onRetry:
-                                () => ref.invalidate(
-                                  documentsControllerProvider,
-                                ),
-                          ),
-                        ],
+                        ),
+                      ),
+                      ...docs.when(
+                        data: (items) {
+                          if (items.isEmpty) {
+                            return const [_EmptyStateCard()];
+                          }
+
+                          return [
+                            for (final entry in items.indexed) ...[
+                              _DocumentCard(
+                                document: entry.$2,
+                                index: entry.$1,
+                                onTap: () async {
+                                  await ref
+                                      .read(
+                                        documentsControllerProvider.notifier,
+                                      )
+                                      .markOpened(entry.$2.id);
+                                  ref
+                                      .read(appControllerProvider.notifier)
+                                      .openDocument(entry.$2.id);
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ];
+                        },
+                        loading:
+                            () => const [
+                              _LoadingStateCard(),
+                              SizedBox(height: 16),
+                              _LoadingStateCard(),
+                            ],
+                        error:
+                            (e, _) => [
+                              _ErrorStateCard(
+                                message: e.toString(),
+                                onRetry:
+                                    () => ref.invalidate(
+                                      documentsControllerProvider,
+                                    ),
+                              ),
+                            ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -548,4 +558,3 @@ Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
       );
   ref.read(appControllerProvider.notifier).openDocument(doc.id);
 }
-

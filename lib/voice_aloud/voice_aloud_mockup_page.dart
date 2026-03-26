@@ -9,6 +9,7 @@ import 'views/scan_view.dart';
 import 'views/settings_view.dart';
 import 'state/providers.dart';
 import 'widgets/blur_panel.dart';
+import 'widgets/lazy_indexed_stack.dart';
 import 'widgets/lucide_svg_icon.dart';
 import 'widgets/phone_overlays.dart';
 import 'voice_aloud_tab.dart';
@@ -73,11 +74,11 @@ class _VoiceAloudAppPageState extends ConsumerState<VoiceAloudAppPage> {
       body: Column(
         children: [
           Expanded(
-            child: IndexedStack(
+            child: LazyIndexedStack(
               index: appState.activeTab.index,
               children: [
-                const LibraryView(),
-                ReadView(
+                (_) => const LibraryView(),
+                (_) => ReadView(
                   isPlaying: playback.isPlaying,
                   showFontMenu: _showFontMenu,
                   onTogglePlaying: () async {
@@ -89,8 +90,8 @@ class _VoiceAloudAppPageState extends ConsumerState<VoiceAloudAppPage> {
                   onToggleFontMenu:
                       () => setState(() => _showFontMenu = !_showFontMenu),
                 ),
-                const ScanView(),
-                const SettingsView(),
+                (_) => const ScanView(),
+                (_) => const SettingsView(),
               ],
             ),
           ),
@@ -208,27 +209,26 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
                   Expanded(
                     child: ColoredBox(
                       color: Colors.white,
-                      child: IndexedStack(
+                      child: LazyIndexedStack(
                         index: appState.activeTab.index,
                         children: [
-                          const LibraryView(),
-                          ReadView(
+                          (_) => const LibraryView(),
+                          (_) => ReadView(
                             isPlaying: playback.isPlaying,
                             showFontMenu: _showFontMenu,
-                            onTogglePlaying:
-                                () async {
-                                  if (activeDoc == null) return;
-                                  await ref
-                                      .read(playbackControllerProvider.notifier)
-                                      .toggle(activeDoc);
-                                },
+                            onTogglePlaying: () async {
+                              if (activeDoc == null) return;
+                              await ref
+                                  .read(playbackControllerProvider.notifier)
+                                  .toggle(activeDoc);
+                            },
                             onToggleFontMenu:
                                 () => setState(
                                   () => _showFontMenu = !_showFontMenu,
                                 ),
                           ),
-                          const ScanView(),
-                          const SettingsView(),
+                          (_) => const ScanView(),
+                          (_) => const SettingsView(),
                         ],
                       ),
                     ),
