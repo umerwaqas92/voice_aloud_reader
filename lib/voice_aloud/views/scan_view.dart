@@ -76,7 +76,6 @@ class _ScanViewState extends ConsumerState<ScanView>
       back,
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.yuv420,
     );
 
     await controller.initialize();
