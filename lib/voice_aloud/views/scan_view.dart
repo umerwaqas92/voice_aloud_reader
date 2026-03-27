@@ -36,6 +36,7 @@ class _ScanViewState extends ConsumerState<ScanView>
   double _maxZoom = 1.0;
   bool _torchOn = false;
   double _scaleBaseZoom = 1.0;
+  ProviderSubscription<VoiceAloudTab>? _tabSubscription;
 
   Future<void> _disposeCamera({required bool updateState}) async {
     final camera = _camera;
@@ -68,6 +69,23 @@ class _ScanViewState extends ConsumerState<ScanView>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    _tabSubscription = ref.listenManual<VoiceAloudTab>(
+      appControllerProvider.select((s) => s.activeTab),
+      (previous, next) {
+        if (next == VoiceAloudTab.scan) {
+          if (_camera != null || _permissionDenied || _isInitializing) return;
+          if (_cameraInitError != null) return;
+          unawaited(_initCamera());
+          return;
+        }
+
+        if (previous == VoiceAloudTab.scan) {
+          _setAutoScan(false);
+          unawaited(_disposeCamera(updateState: true));
+        }
+      },
+    );
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -86,12 +104,13 @@ class _ScanViewState extends ConsumerState<ScanView>
     _autoScanTimer?.cancel();
     unawaited(_disposeCamera(updateState: false));
     _pulseController.dispose();
+    _tabSubscription?.close();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     if (isInTest) return;
     if (!mounted) return;
 
@@ -102,7 +121,17 @@ class _ScanViewState extends ConsumerState<ScanView>
     }
 
     if (state == AppLifecycleState.resumed) {
-      if (_camera != null || _permissionDenied || _isInitializing) return;
+      if (_camera != null || _isInitializing) return;
+      if (_permissionDenied) {
+        final status = await Permission.camera.status;
+        if (status.isGranted) {
+          if (mounted) {
+            setState(() => _permissionDenied = false);
+          }
+        } else {
+          return;
+        }
+      }
       unawaited(_initCamera());
     }
   }
@@ -555,23 +584,6 @@ class _ScanViewState extends ConsumerState<ScanView>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<VoiceAloudTab>(
-      appControllerProvider.select((s) => s.activeTab),
-      (previous, next) {
-        if (next == VoiceAloudTab.scan) {
-          if (_camera != null || _permissionDenied || _isInitializing) return;
-          if (_cameraInitError != null) return;
-          unawaited(_initCamera());
-          return;
-        }
-
-        if (previous == VoiceAloudTab.scan) {
-          _setAutoScan(false);
-          unawaited(_disposeCamera(updateState: true));
-        }
-      },
-    );
-
     if (isInTest) {
       return _MockScanUi(pulse: _pulseController);
     }
