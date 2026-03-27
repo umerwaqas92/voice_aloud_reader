@@ -104,9 +104,7 @@ class ReadView extends ConsumerWidget {
                               'type',
                               size: 20,
                               color:
-                                  showFontMenu
-                                      ? VAColors.blue600
-                                      : iconColor,
+                                  showFontMenu ? VAColors.blue600 : iconColor,
                             ),
                             backgroundColor:
                                 showFontMenu
@@ -148,6 +146,19 @@ class ReadView extends ConsumerWidget {
                                 fontSize: settings.fontSize,
                                 titleColor: titleColor,
                                 textColor: textColor,
+                                isPlaying:
+                                    playback.isPlaying &&
+                                    playback.documentId == doc.id,
+                                highlightEnabled: settings.highlightSpokenText,
+                                autoScroll: settings.autoScroll,
+                                highlightStart:
+                                    playback.documentId == doc.id
+                                        ? playback.highlightStart
+                                        : null,
+                                highlightEnd:
+                                    playback.documentId == doc.id
+                                        ? playback.highlightEnd
+                                        : null,
                                 onParagraphTap:
                                     (startOffset) async => ref
                                         .read(
@@ -238,6 +249,11 @@ class _ReaderBody extends StatelessWidget {
     required this.fontSize,
     required this.titleColor,
     required this.textColor,
+    required this.isPlaying,
+    required this.highlightEnabled,
+    required this.autoScroll,
+    required this.highlightStart,
+    required this.highlightEnd,
     required this.onParagraphTap,
   });
 
@@ -245,36 +261,178 @@ class _ReaderBody extends StatelessWidget {
   final double fontSize;
   final Color titleColor;
   final Color textColor;
+  final bool isPlaying;
+  final bool highlightEnabled;
+  final bool autoScroll;
+  final int? highlightStart;
+  final int? highlightEnd;
   final ValueChanged<int> onParagraphTap;
 
   @override
   Widget build(BuildContext context) {
     final paragraphs = _splitParagraphs(document.content);
+    return _ReaderScrollView(
+      documentId: document.id,
+      title: document.title,
+      paragraphs: paragraphs,
+      fontSize: fontSize,
+      titleColor: titleColor,
+      textColor: textColor,
+      isPlaying: isPlaying,
+      highlightEnabled: highlightEnabled,
+      autoScroll: autoScroll,
+      highlightStart: highlightStart,
+      highlightEnd: highlightEnd,
+      onParagraphTap: onParagraphTap,
+    );
+  }
+}
+
+class _ReaderScrollView extends StatefulWidget {
+  const _ReaderScrollView({
+    required this.documentId,
+    required this.title,
+    required this.paragraphs,
+    required this.fontSize,
+    required this.titleColor,
+    required this.textColor,
+    required this.isPlaying,
+    required this.highlightEnabled,
+    required this.autoScroll,
+    required this.highlightStart,
+    required this.highlightEnd,
+    required this.onParagraphTap,
+  });
+
+  final String documentId;
+  final String title;
+  final List<_Paragraph> paragraphs;
+  final double fontSize;
+  final Color titleColor;
+  final Color textColor;
+  final bool isPlaying;
+  final bool highlightEnabled;
+  final bool autoScroll;
+  final int? highlightStart;
+  final int? highlightEnd;
+  final ValueChanged<int> onParagraphTap;
+
+  @override
+  State<_ReaderScrollView> createState() => _ReaderScrollViewState();
+}
+
+class _ReaderScrollViewState extends State<_ReaderScrollView> {
+  final _scrollController = ScrollController();
+  late List<GlobalKey> _paragraphKeys;
+
+  int? _lastAutoScrolledParagraphStart;
+  int? _lastHighlightStart;
+
+  @override
+  void initState() {
+    super.initState();
+    _paragraphKeys = List<GlobalKey>.generate(
+      widget.paragraphs.length,
+      (_) => GlobalKey(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReaderScrollView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.paragraphs.length != oldWidget.paragraphs.length ||
+        widget.documentId != oldWidget.documentId) {
+      _paragraphKeys = List<GlobalKey>.generate(
+        widget.paragraphs.length,
+        (_) => GlobalKey(),
+      );
+      _lastAutoScrolledParagraphStart = null;
+      _lastHighlightStart = null;
+    }
+
+    final highlightStart = widget.highlightStart;
+    final shouldAutoScroll =
+        widget.autoScroll &&
+        widget.highlightEnabled &&
+        widget.isPlaying &&
+        highlightStart != null;
+
+    if (!shouldAutoScroll) return;
+    if (highlightStart == _lastHighlightStart) return;
+    _lastHighlightStart = highlightStart;
+
+    final idx = _paragraphIndexForOffset(highlightStart);
+    if (idx == null) return;
+
+    final paragraphStart = widget.paragraphs[idx].startOffset;
+    if (paragraphStart == _lastAutoScrolledParagraphStart) return;
+    _lastAutoScrolledParagraphStart = paragraphStart;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final context = _paragraphKeys[idx].currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.2,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  int? _paragraphIndexForOffset(int offset) {
+    for (var i = 0; i < widget.paragraphs.length; i++) {
+      final p = widget.paragraphs[i];
+      final start = p.startOffset;
+      final end = start + p.text.length;
+      if (offset >= start && offset < end) return i;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 192),
       child: Column(
         children: [
           const SizedBox(height: 16),
           Text(
-            document.title.toUpperCase(),
+            widget.title.toUpperCase(),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               letterSpacing: 2.4,
-              color: titleColor,
+              color: widget.titleColor,
             ),
           ),
           const SizedBox(height: 32),
-          for (final entry in paragraphs.indexed) ...[
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onParagraphTap(entry.$2.startOffset),
-              child: _DropCapParagraph(
-                text: entry.$2.text,
-                withDropCap: entry.$1 == 0,
-                fontSize: fontSize,
-                textColor: textColor,
+          for (final entry in widget.paragraphs.indexed) ...[
+            KeyedSubtree(
+              key: _paragraphKeys[entry.$1],
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => widget.onParagraphTap(entry.$2.startOffset),
+                child: _DropCapParagraph(
+                  text: entry.$2.text,
+                  paragraphStartOffset: entry.$2.startOffset,
+                  highlightEnabled: widget.highlightEnabled,
+                  highlightStart: widget.highlightStart,
+                  highlightEnd: widget.highlightEnd,
+                  withDropCap: entry.$1 == 0,
+                  fontSize: widget.fontSize,
+                  textColor: widget.textColor,
+                ),
               ),
             ),
           ],
@@ -373,14 +531,16 @@ class _FontMenu extends StatelessWidget {
                     _FontSizeDot(
                       text: 'A',
                       fontSize: 14,
-                      selected: (selectedSize - _small).abs() <
+                      selected:
+                          (selectedSize - _small).abs() <
                           (selectedSize - _large).abs(),
                       onTap: () => onFontSizeChanged(_small),
                     ),
                     _FontSizeDot(
                       text: 'A',
                       fontSize: 18,
-                      selected: (selectedSize - _large).abs() <=
+                      selected:
+                          (selectedSize - _large).abs() <=
                           (selectedSize - _small).abs(),
                       onTap: () => onFontSizeChanged(_large),
                     ),
@@ -605,8 +765,10 @@ class _BottomPlayer extends StatelessWidget {
                         behavior: HitTestBehavior.opaque,
                         onTapDown: (details) {
                           final width = constraints.maxWidth;
-                          final localX =
-                              details.localPosition.dx.clamp(0.0, width);
+                          final localX = details.localPosition.dx.clamp(
+                            0.0,
+                            width,
+                          );
                           onSeek(localX / width);
                         },
                         child: ClipRRect(
@@ -650,10 +812,7 @@ class _BottomPlayer extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _SkipButton(
-                  iconName: 'skip-back',
-                  onTap: () => onSkip(-15),
-                ),
+                _SkipButton(iconName: 'skip-back', onTap: () => onSkip(-15)),
                 const SizedBox(width: 32),
                 GestureDetector(
                   onTap: onTogglePlaying,
@@ -684,10 +843,7 @@ class _BottomPlayer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 32),
-                _SkipButton(
-                  iconName: 'skip-forward',
-                  onTap: () => onSkip(15),
-                ),
+                _SkipButton(iconName: 'skip-forward', onTap: () => onSkip(15)),
               ],
             ),
           ],
@@ -739,12 +895,20 @@ class _SkipButton extends StatelessWidget {
 class _DropCapParagraph extends StatelessWidget {
   const _DropCapParagraph({
     required this.text,
+    required this.paragraphStartOffset,
+    required this.highlightEnabled,
+    required this.highlightStart,
+    required this.highlightEnd,
     required this.fontSize,
     required this.textColor,
     this.withDropCap = false,
   });
 
   final String text;
+  final int paragraphStartOffset;
+  final bool highlightEnabled;
+  final int? highlightStart;
+  final int? highlightEnd;
   final bool withDropCap;
   final double fontSize;
   final Color textColor;
@@ -756,15 +920,48 @@ class _DropCapParagraph extends StatelessWidget {
       height: 1.65,
       color: textColor,
     );
+    final highlightStyle = paragraphStyle.copyWith(
+      backgroundColor: VAColors.yellow300.withValues(alpha: 0.65),
+      color: VAColors.gray900,
+      fontWeight: FontWeight.w700,
+    );
+
+    (int, int)? highlightRange() {
+      if (!highlightEnabled) return null;
+      final start = highlightStart;
+      final end = highlightEnd;
+      if (start == null || end == null) return null;
+
+      final relStart =
+          (start - paragraphStartOffset).clamp(0, text.length).toInt();
+      final relEnd = (end - paragraphStartOffset).clamp(0, text.length).toInt();
+      if (relStart >= relEnd) return null;
+      return (relStart, relEnd);
+    }
+
+    List<InlineSpan> buildSpans(String chunk, (int, int)? range) {
+      if (range == null) return [TextSpan(text: chunk)];
+      final (s, e) = range;
+      if (s <= 0 && e >= chunk.length) {
+        return [TextSpan(text: chunk, style: highlightStyle)];
+      }
+
+      final spans = <InlineSpan>[];
+      if (s > 0) spans.add(TextSpan(text: chunk.substring(0, s)));
+      spans.add(TextSpan(text: chunk.substring(s, e), style: highlightStyle));
+      if (e < chunk.length) spans.add(TextSpan(text: chunk.substring(e)));
+      return spans;
+    }
 
     if (!withDropCap || text.isEmpty) {
+      final range = highlightRange();
       return Padding(
         padding: const EdgeInsets.only(bottom: 24),
         child: Text.rich(
           TextSpan(
             children: [
               const WidgetSpan(child: SizedBox(width: 32)),
-              TextSpan(text: text),
+              ...buildSpans(text, range),
             ],
           ),
           textAlign: TextAlign.justify,
@@ -775,6 +972,18 @@ class _DropCapParagraph extends StatelessWidget {
 
     final first = text.substring(0, 1);
     final rest = text.substring(1);
+    final range = highlightRange();
+    final firstHighlighted =
+        range != null && range.$1 <= 0 && range.$2 >= 1 && first.isNotEmpty;
+    final restRange =
+        range == null
+            ? null
+            : (
+              (range.$1 - 1).clamp(0, rest.length).toInt(),
+              (range.$2 - 1).clamp(0, rest.length).toInt(),
+            );
+    final effectiveRestRange =
+        restRange == null || restRange.$1 >= restRange.$2 ? null : restRange;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -787,11 +996,19 @@ class _DropCapParagraph extends StatelessWidget {
               padding: const EdgeInsets.only(right: 8),
               child: Text(
                 first,
-                style: paragraphStyle.copyWith(
-                  fontSize: fontSize * 2.67,
-                  height: 1,
-                  fontWeight: FontWeight.w700,
-                ),
+                style:
+                    (() {
+                      final dropCapStyle = paragraphStyle.copyWith(
+                        fontSize: fontSize * 2.67,
+                        height: 1,
+                        fontWeight: FontWeight.w700,
+                      );
+                      if (!firstHighlighted) return dropCapStyle;
+                      return dropCapStyle.copyWith(
+                        backgroundColor: highlightStyle.backgroundColor,
+                        color: highlightStyle.color,
+                      );
+                    })(),
               ),
             ),
           ),
@@ -800,7 +1017,7 @@ class _DropCapParagraph extends StatelessWidget {
               TextSpan(
                 children: [
                   const WidgetSpan(child: SizedBox(width: 32)),
-                  TextSpan(text: rest),
+                  ...buildSpans(rest, effectiveRestRange),
                 ],
               ),
               textAlign: TextAlign.justify,
@@ -901,7 +1118,8 @@ Future<void> _showOutlineSheet(
           itemBuilder: (context, index) {
             final p = paragraphs[index];
             final snippet = p.text.replaceAll('\n', ' ').trim();
-            final title = snippet.length <= 60 ? snippet : '${snippet.substring(0, 60)}…';
+            final title =
+                snippet.length <= 60 ? snippet : '${snippet.substring(0, 60)}…';
             return ListTile(
               title: Text(title),
               onTap: () async {

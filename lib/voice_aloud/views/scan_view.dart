@@ -22,21 +22,25 @@ class ScanView extends ConsumerStatefulWidget {
 }
 
 class _ScanViewState extends ConsumerState<ScanView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _pulseController;
 
   CameraController? _camera;
+  bool _isInitializing = false;
   bool _permissionDenied = false;
+  String? _cameraInitError;
   bool _isBusy = false;
   bool _autoScan = false;
   Timer? _autoScanTimer;
   double _zoom = 1.0;
   double _maxZoom = 1.0;
   bool _torchOn = false;
+  double _scaleBaseZoom = 1.0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _pulseController = AnimationController(
       vsync: this,
@@ -56,42 +60,99 @@ class _ScanViewState extends ConsumerState<ScanView>
     _autoScanTimer?.cancel();
     _camera?.dispose();
     _pulseController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  Future<void> _initCamera() async {
-    final status = await Permission.camera.request();
-    if (!status.isGranted) {
-      if (mounted) setState(() => _permissionDenied = true);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (isInTest) return;
+    if (!mounted) return;
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      final camera = _camera;
+      if (camera == null) return;
+      unawaited(camera.dispose());
+      setState(() => _camera = null);
       return;
     }
 
-    final cameras = await availableCameras();
-    final back = cameras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.back,
-      orElse: () => cameras.isNotEmpty ? cameras.first : throw StateError('No cameras found'),
-    );
+    if (state == AppLifecycleState.resumed) {
+      if (_camera != null || _permissionDenied || _isInitializing) return;
+      unawaited(_initCamera());
+    }
+  }
 
-    final controller = CameraController(
-      back,
-      ResolutionPreset.high,
-      enableAudio: false,
-    );
+  Future<void> _initCamera() async {
+    if (_isInitializing) return;
 
-    await controller.initialize();
-    _maxZoom = await controller.getMaxZoomLevel();
-    await controller.setZoomLevel(_zoom);
-    await controller.setFlashMode(FlashMode.off);
-
-    if (!mounted) {
-      await controller.dispose();
-      return;
+    final old = _camera;
+    if (old != null) {
+      setState(() => _camera = null);
+      try {
+        await old.dispose();
+      } catch (_) {}
     }
 
     setState(() {
+      _isInitializing = true;
+      _cameraInitError = null;
       _permissionDenied = false;
-      _camera = controller;
     });
+
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = true;
+          _isInitializing = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        throw StateError('No cameras found');
+      }
+
+      final back = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      final controller = CameraController(
+        back,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await controller.initialize();
+      _maxZoom = await controller.getMaxZoomLevel();
+      await controller.setZoomLevel(_zoom.clamp(1.0, _maxZoom));
+      await controller.setFlashMode(FlashMode.off);
+
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      setState(() {
+        _camera = controller;
+        _isInitializing = false;
+        _cameraInitError = null;
+        _permissionDenied = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _camera = null;
+        _isInitializing = false;
+        _cameraInitError = e.toString();
+      });
+    }
   }
 
   Future<void> _toggleTorch() async {
@@ -105,8 +166,7 @@ class _ScanViewState extends ConsumerState<ScanView>
         await camera.setFlashMode(FlashMode.torch);
       }
       if (mounted) setState(() => _torchOn = !_torchOn);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _toggleZoom() async {
@@ -171,18 +231,31 @@ class _ScanViewState extends ConsumerState<ScanView>
     });
   }
 
-  Future<void> _recognizeAndReview(String filePath, {required DocumentSource source}) async {
+  Future<void> _recognizeAndReview(
+    String filePath, {
+    required DocumentSource source,
+  }) async {
     setState(() => _isBusy = true);
     try {
-      final text =
-          await ref.read(ocrServiceProvider).recognizeTextFromFilePath(filePath);
+      final text = await ref
+          .read(ocrServiceProvider)
+          .recognizeTextFromFilePath(filePath);
       await _showReviewSheet(text, source: source);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Scan failed: ${e.toString()}')));
+      }
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
   }
 
-  Future<void> _showReviewSheet(String text, {required DocumentSource source}) async {
+  Future<void> _showReviewSheet(
+    String text, {
+    required DocumentSource source,
+  }) async {
     final content = text.trim();
     if (content.isEmpty) {
       if (mounted) {
@@ -258,13 +331,199 @@ class _ScanViewState extends ConsumerState<ScanView>
 
     if (saved != true) return;
 
-    final doc =
-        await ref.read(documentsControllerProvider.notifier).addFromText(
-              title: titleController.text,
-              content: textController.text.trim(),
-              source: source,
-            );
+    final doc = await ref
+        .read(documentsControllerProvider.notifier)
+        .addFromText(
+          title: titleController.text,
+          content: textController.text.trim(),
+          source: source,
+        );
     ref.read(appControllerProvider.notifier).openDocument(doc.id);
+  }
+
+  Widget _buildLivePreview() {
+    final camera = _camera;
+    if (camera == null || !camera.value.isInitialized) {
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    final size = MediaQuery.sizeOf(context);
+    final screenAspectRatio = size.width / size.height;
+    var scale = camera.value.aspectRatio / screenAspectRatio;
+    if (scale < 1) scale = 1 / scale;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onScaleStart: (_) => _scaleBaseZoom = _zoom,
+      onScaleUpdate: (details) async {
+        if (_isBusy) return;
+        final next = (_scaleBaseZoom * details.scale).clamp(1.0, _maxZoom);
+        if ((next - _zoom).abs() < 0.02) return;
+        try {
+          await camera.setZoomLevel(next);
+          if (mounted) setState(() => _zoom = next);
+        } catch (_) {}
+      },
+      child: Transform.scale(
+        scale: scale,
+        child: Center(
+          child: AspectRatio(
+            aspectRatio: camera.value.aspectRatio,
+            child: CameraPreview(camera),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewfinderOverlay() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final holeWidth = mathMin(size.width * 0.84, 360);
+        final holeHeight = (holeWidth * 1.25).clamp(260.0, size.height * 0.62);
+        final hole = Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2),
+          width: holeWidth,
+          height: holeHeight,
+        );
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ViewfinderDimPainter(
+                  holeRect: hole,
+                  holeRadius: 16,
+                  overlayColor: Colors.black.withValues(alpha: 0.42),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: holeWidth,
+                height: holeHeight,
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    const Positioned(
+                      top: -4,
+                      left: -4,
+                      child: _CornerAccent(top: true, left: true),
+                    ),
+                    const Positioned(
+                      top: -4,
+                      right: -4,
+                      child: _CornerAccent(top: true, left: false),
+                    ),
+                    const Positioned(
+                      bottom: -4,
+                      left: -4,
+                      child: _CornerAccent(top: false, left: true),
+                    ),
+                    const Positioned(
+                      bottom: -4,
+                      right: -4,
+                      child: _CornerAccent(top: false, left: false),
+                    ),
+                    Positioned.fill(
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, _) {
+                            final opacity =
+                                0.45 + (_pulseController.value * 0.55);
+                            return Opacity(
+                              opacity: opacity,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Keep text inside frame',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildZoomPill() {
+    return BlurPanel(
+      borderRadius: BorderRadius.circular(999),
+      sigma: 14,
+      color: Colors.black.withValues(alpha: 0.45),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Text(
+          '${_zoom.toStringAsFixed(_zoom < 2 ? 1 : 0)}×',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAutoScanSheet() async {
+    final next = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: SwitchListTile(
+            title: const Text('Auto Scan'),
+            value: _autoScan,
+            onChanged: (v) => Navigator.of(context).pop(v),
+          ),
+        );
+      },
+    );
+    if (next != null) _setAutoScan(next);
   }
 
   @override
@@ -277,233 +536,25 @@ class _ScanViewState extends ConsumerState<ScanView>
       return _PermissionDeniedView(onRetry: _initCamera);
     }
 
+    final error = _cameraInitError;
+    if (error != null) {
+      return _CameraInitErrorView(message: error, onRetry: _initCamera);
+    }
+
     return ColoredBox(
       color: Colors.black,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 32),
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final size = constraints.biggest;
-                        final hole = Rect.fromCenter(
-                          center: Offset(size.width / 2, size.height / 2),
-                          width: 280,
-                          height: 400,
-                        );
-
-                        return Stack(
-                          children: [
-                            Positioned.fill(
-                              child: _camera == null
-                                  ? const ColoredBox(color: Colors.black)
-                                  : ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: FittedBox(
-                                        fit: BoxFit.cover,
-                                        child: SizedBox(
-                                          width: _camera!.value.previewSize?.height ?? size.width,
-                                          height: _camera!.value.previewSize?.width ?? size.height,
-                                          child: CameraPreview(_camera!),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                            Positioned.fill(
-                              child: ColoredBox(
-                                color: Colors.black.withValues(alpha: 0.25),
-                              ),
-                            ),
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: _ViewfinderDimPainter(
-                                  holeRect: hole,
-                                  holeRadius: 12,
-                                  overlayColor: Colors.black.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.center,
-                              child: SizedBox(
-                                width: 280,
-                                height: 400,
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          width: 1,
-                                        ),
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      top: -4,
-                                      left: -4,
-                                      child: _CornerAccent(
-                                        top: true,
-                                        left: true,
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      top: -4,
-                                      right: -4,
-                                      child: _CornerAccent(
-                                        top: true,
-                                        left: false,
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      bottom: -4,
-                                      left: -4,
-                                      child: _CornerAccent(
-                                        top: false,
-                                        left: true,
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      bottom: -4,
-                                      right: -4,
-                                      child: _CornerAccent(
-                                        top: false,
-                                        left: false,
-                                      ),
-                                    ),
-                                    Positioned.fill(
-                                      child: Center(
-                                        child: AnimatedBuilder(
-                                          animation: _pulseController,
-                                          builder: (context, _) {
-                                            final opacity =
-                                                0.5 +
-                                                (_pulseController.value * 0.5);
-                                            return Opacity(
-                                              opacity: opacity,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 10,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withValues(
-                                                    alpha: 0.35,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                ),
-                                                child: const Text(
-                                                  'Position text in frame',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                BlurPanel(
-                  borderRadius: BorderRadius.zero,
-                  sigma: 18,
-                  color: Colors.black.withValues(alpha: 0.9),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _GrayCircleButton(
-                          onTap: _pickFromGallery,
-                          child: const LucideSvgIcon(
-                            'image',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _capture,
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 5),
-                            ),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _GrayCircleButton(
-                          onTap: () async {
-                            final next = await showModalBottomSheet<bool>(
-                              context: context,
-                              showDragHandle: true,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(24),
-                                ),
-                              ),
-                              builder: (context) {
-                                return SafeArea(
-                                  top: false,
-                                  child: SwitchListTile(
-                                    title: const Text('Auto Scan'),
-                                    value: _autoScan,
-                                    onChanged:
-                                        (v) => Navigator.of(context).pop(v),
-                                  ),
-                                );
-                              },
-                            );
-                            if (next != null) _setAutoScan(next);
-                          },
-                          child: const LucideSvgIcon(
-                            'settings',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
+      child: Stack(
+        children: [
+          Positioned.fill(child: _buildLivePreview()),
+          Positioned.fill(child: _buildViewfinderOverlay()),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -519,51 +570,118 @@ class _ScanViewState extends ConsumerState<ScanView>
                       onTap: () => _setAutoScan(!_autoScan),
                       child: BlurPanel(
                         borderRadius: BorderRadius.circular(999),
-                        sigma: 12,
-                        color: Colors.black.withValues(alpha: 0.6),
+                        sigma: 14,
+                        color: Colors.black.withValues(alpha: 0.45),
                         border: Border.all(
                           color: VAColors.yellow400.withValues(
-                            alpha: _autoScan ? 0.9 : 0.3,
+                            alpha: _autoScan ? 0.9 : 0.25,
                           ),
                           width: 1,
                         ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
+                            horizontal: 14,
                             vertical: 6,
                           ),
                           child: Text(
-                            _autoScan ? 'Auto Scan On' : 'Auto Scan',
+                            _autoScan ? 'AUTO SCAN ON' : 'AUTO SCAN',
                             style: const TextStyle(
                               color: VAColors.yellow400,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.0,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    _BlackCircleButton(
+                    GestureDetector(
                       onTap: _toggleZoom,
-                      child: const LucideSvgIcon(
-                        'maximize',
-                        size: 20,
-                        color: Colors.white,
-                      ),
+                      child: _buildZoomPill(),
                     ),
                   ],
                 ),
               ),
             ),
-            if (_isBusy)
-              const Positioned.fill(
-                child: IgnorePointer(
-                  child: Center(child: CircularProgressIndicator()),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: BlurPanel(
+                  borderRadius: BorderRadius.circular(28),
+                  sigma: 18,
+                  color: Colors.black.withValues(alpha: 0.72),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _GrayCircleButton(
+                          onTap: _pickFromGallery,
+                          child: const LucideSvgIcon(
+                            'image',
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _capture,
+                          child: Container(
+                            width: 84,
+                            height: 84,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                width: 5,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x66000000),
+                                  blurRadius: 24,
+                                  offset: Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _GrayCircleButton(
+                          onTap: _openAutoScanSheet,
+                          child: const LucideSvgIcon(
+                            'settings',
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-          ],
-        ),
+            ),
+          ),
+          if (_isBusy || _isInitializing)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -578,258 +696,279 @@ class _MockScanUi extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Colors.black,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 32),
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final size = constraints.biggest;
-                        final hole = Rect.fromCenter(
-                          center: Offset(size.width / 2, size.height / 2),
-                          width: 280,
-                          height: 400,
-                        );
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.8,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.matrix(_desaturate50),
+                  child: Image.asset(
+                    'assets/images/scan_bg.jpg',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
+          ),
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = constraints.biggest;
+                final holeWidth = mathMin(size.width * 0.84, 360);
+                final holeHeight = (holeWidth * 1.25).clamp(
+                  260.0,
+                  size.height * 0.62,
+                );
+                final hole = Rect.fromCenter(
+                  center: Offset(size.width / 2, size.height / 2),
+                  width: holeWidth,
+                  height: holeHeight,
+                );
 
-                        return Stack(
+                return Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _ViewfinderDimPainter(
+                          holeRect: hole,
+                          holeRadius: 16,
+                          overlayColor: Colors.black.withValues(alpha: 0.42),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: holeWidth,
+                        height: holeHeight,
+                        child: Stack(
                           children: [
-                            Positioned.fill(
-                              child: Opacity(
-                                opacity: 0.5,
-                                child: ImageFiltered(
-                                  imageFilter: ImageFilter.blur(
-                                    sigmaX: 8,
-                                    sigmaY: 8,
-                                  ),
-                                  child: ColorFiltered(
-                                    colorFilter: const ColorFilter.matrix(
-                                      _desaturate50,
-                                    ),
-                                    child: Image.asset(
-                                      'assets/images/scan_bg.jpg',
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.16),
+                                  width: 1,
                                 ),
                               ),
                             ),
-                            Positioned.fill(
-                              child: ColoredBox(
-                                color: Colors.black.withValues(alpha: 0.4),
-                              ),
+                            const Positioned(
+                              top: -4,
+                              left: -4,
+                              child: _CornerAccent(top: true, left: true),
+                            ),
+                            const Positioned(
+                              top: -4,
+                              right: -4,
+                              child: _CornerAccent(top: true, left: false),
+                            ),
+                            const Positioned(
+                              bottom: -4,
+                              left: -4,
+                              child: _CornerAccent(top: false, left: true),
+                            ),
+                            const Positioned(
+                              bottom: -4,
+                              right: -4,
+                              child: _CornerAccent(top: false, left: false),
                             ),
                             Positioned.fill(
-                              child: CustomPaint(
-                                painter: _ViewfinderDimPainter(
-                                  holeRect: hole,
-                                  holeRadius: 12,
-                                  overlayColor: Colors.black.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.center,
-                              child: SizedBox(
-                                width: 280,
-                                height: 400,
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.2,
+                              child: Center(
+                                child: AnimatedBuilder(
+                                  animation: pulse,
+                                  builder: (context, _) {
+                                    final opacity = 0.45 + (pulse.value * 0.55);
+                                    return Opacity(
+                                      opacity: opacity,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 18,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.35,
                                           ),
-                                          width: 1,
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Keep text inside frame',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: 0.2,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const Positioned(
-                                      top: -4,
-                                      left: -4,
-                                      child: _CornerAccent(
-                                        top: true,
-                                        left: true,
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      top: -4,
-                                      right: -4,
-                                      child: _CornerAccent(
-                                        top: true,
-                                        left: false,
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      bottom: -4,
-                                      left: -4,
-                                      child: _CornerAccent(
-                                        top: false,
-                                        left: true,
-                                      ),
-                                    ),
-                                    const Positioned(
-                                      bottom: -4,
-                                      right: -4,
-                                      child: _CornerAccent(
-                                        top: false,
-                                        left: false,
-                                      ),
-                                    ),
-                                    Positioned.fill(
-                                      child: Center(
-                                        child: AnimatedBuilder(
-                                          animation: pulse,
-                                          builder: (context, _) {
-                                            final opacity = 0.5 + (pulse.value * 0.5);
-                                            return Opacity(
-                                              opacity: opacity,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 10,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withValues(
-                                                    alpha: 0.35,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                ),
-                                                child: const Text(
-                                                  'Position text in frame',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
                               ),
                             ),
                           ],
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                BlurPanel(
-                  borderRadius: BorderRadius.zero,
-                  sigma: 18,
-                  color: Colors.black.withValues(alpha: 0.9),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _GrayCircleButton(
-                          child: const LucideSvgIcon(
-                            'image',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                          onTap: () {},
-                        ),
-                        Container(
-                          width: 80,
-                          height: 80,
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 5),
-                          ),
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        _GrayCircleButton(
-                          child: const LucideSvgIcon(
-                            'settings',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                          onTap: () {},
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _BlackCircleButton(
+                      onTap: () {},
                       child: const LucideSvgIcon(
                         'zap',
                         size: 20,
                         color: Colors.white,
                       ),
-                      onTap: () {},
                     ),
                     BlurPanel(
                       borderRadius: BorderRadius.circular(999),
-                      sigma: 12,
-                      color: Colors.black.withValues(alpha: 0.6),
+                      sigma: 14,
+                      color: Colors.black.withValues(alpha: 0.45),
                       border: Border.all(
-                        color: VAColors.yellow400.withValues(alpha: 0.3),
+                        color: VAColors.yellow400.withValues(alpha: 0.25),
                         width: 1,
                       ),
                       child: const Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 14,
                           vertical: 6,
                         ),
                         child: Text(
-                          'Auto Scan',
+                          'AUTO SCAN',
                           style: TextStyle(
                             color: VAColors.yellow400,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
                           ),
                         ),
                       ),
                     ),
-                    _BlackCircleButton(
-                      child: const LucideSvgIcon(
-                        'maximize',
-                        size: 20,
-                        color: Colors.white,
+                    BlurPanel(
+                      borderRadius: BorderRadius.circular(999),
+                      sigma: 14,
+                      color: Colors.black.withValues(alpha: 0.45),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.12),
                       ),
-                      onTap: () {},
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          '1.0×',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: BlurPanel(
+                  borderRadius: BorderRadius.circular(28),
+                  sigma: 18,
+                  color: Colors.black.withValues(alpha: 0.72),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _GrayCircleButton(
+                          onTap: () {},
+                          child: const LucideSvgIcon(
+                            'image',
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            width: 84,
+                            height: 84,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                width: 5,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x66000000),
+                                  blurRadius: 24,
+                                  offset: Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: const DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _GrayCircleButton(
+                          onTap: () {},
+                          child: const LucideSvgIcon(
+                            'settings',
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -852,7 +991,10 @@ class _PermissionDeniedView extends StatelessWidget {
             children: [
               const Text(
                 'Camera permission required',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -864,6 +1006,55 @@ class _PermissionDeniedView extends StatelessWidget {
               FilledButton(
                 onPressed: () async => onRetry(),
                 child: const Text('Try again'),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: openAppSettings,
+                child: const Text('Open settings'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraInitErrorView extends StatelessWidget {
+  const _CameraInitErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Camera failed to start',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () async => onRetry(),
+                child: const Text('Retry'),
               ),
               const SizedBox(height: 12),
               TextButton(

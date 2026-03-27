@@ -77,6 +77,55 @@ class SettingsView extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Reader',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.2,
+                      color: VAColors.gray400,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _Card(
+                  child: Column(
+                    children: [
+                      _ToggleRow(
+                        title: 'Highlight spoken word',
+                        subtitle: 'Highlights the word being read aloud',
+                        value: settings.highlightSpokenText,
+                        onChanged:
+                            (enabled) => ref
+                                .read(settingsControllerProvider.notifier)
+                                .toggleHighlight(enabled),
+                      ),
+                      const _Divider(),
+                      _ToggleRow(
+                        title: 'Auto-scroll while reading',
+                        subtitle: 'Keeps the spoken text visible',
+                        value: settings.autoScroll,
+                        onChanged:
+                            (enabled) => ref
+                                .read(settingsControllerProvider.notifier)
+                                .toggleAutoScroll(enabled),
+                      ),
+                      const _Divider(),
+                      _ToggleRow(
+                        title: 'Keep screen on',
+                        subtitle: 'Prevents screen from sleeping while playing',
+                        value: settings.keepScreenOn,
+                        onChanged:
+                            (enabled) => ref
+                                .read(settingsControllerProvider.notifier)
+                                .toggleKeepScreenOn(enabled),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 32),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
@@ -124,7 +173,8 @@ class SettingsView extends ConsumerWidget {
                                 ? 'Samantha (Enhanced)'
                                 : settings.voiceName,
                         subtitleColor: VAColors.blue600,
-                        onTap: () => _pickVoice(context, ref, settings.language),
+                        onTap:
+                            () => _pickVoice(context, ref, settings.language),
                       ),
                     ],
                   ),
@@ -196,6 +246,53 @@ class _InsetDivider extends StatelessWidget {
       height: 1,
       margin: const EdgeInsets.only(left: 16),
       color: VAColors.gray100,
+    );
+  }
+}
+
+class _ToggleRow extends StatelessWidget {
+  const _ToggleRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: VAColors.gray800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 14, color: VAColors.gray500),
+              ),
+            ],
+          ),
+        ),
+        Switch.adaptive(
+          value: value,
+          activeThumbColor: VAColors.blue600,
+          activeTrackColor: VAColors.blue100,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }
@@ -539,7 +636,8 @@ Future<void> _pickVoice(
                   language.trim().isEmpty
                       ? voices
                       : voices.where((v) {
-                        final locale = (v['locale'] ?? v['Locale'] ?? '').toString();
+                        final locale =
+                            (v['locale'] ?? v['Locale'] ?? '').toString();
                         return locale.startsWith(language);
                       }).toList();
 

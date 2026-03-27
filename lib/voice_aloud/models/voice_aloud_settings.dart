@@ -31,7 +31,7 @@ class VoiceAloudSettings {
     volume: 0.6,
     fontSize: 18,
     themeMode: ReaderThemeMode.light,
-    highlightSpokenText: false,
+    highlightSpokenText: true,
     autoScroll: true,
     keepScreenOn: true,
     language: '',
@@ -99,8 +99,7 @@ class VoiceAloudSettings {
     }
 
     return VoiceAloudSettings(
-      speechRate:
-          readDouble('speechRate', defaults.speechRate).clamp(0.5, 3.0),
+      speechRate: readDouble('speechRate', defaults.speechRate).clamp(0.5, 3.0),
       pitch: readDouble('pitch', defaults.pitch).clamp(0.0, 1.0),
       volume: readDouble('volume', defaults.volume).clamp(0.0, 1.0),
       fontSize: readDouble('fontSize', defaults.fontSize).clamp(14.0, 30.0),
