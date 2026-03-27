@@ -11,8 +11,8 @@ import '../models/document.dart';
 import '../runtime_flags.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
-import '../widgets/blur_panel.dart';
 import '../widgets/lucide_svg_icon.dart';
+import '../voice_aloud_tab.dart';
 
 class ScanView extends ConsumerStatefulWidget {
   const ScanView({super.key});
@@ -37,6 +37,32 @@ class _ScanViewState extends ConsumerState<ScanView>
   bool _torchOn = false;
   double _scaleBaseZoom = 1.0;
 
+  Future<void> _disposeCamera({required bool updateState}) async {
+    final camera = _camera;
+    if (camera == null) return;
+
+    if (updateState && mounted) {
+      setState(() {
+        _camera = null;
+        _torchOn = false;
+        _zoom = 1.0;
+        _maxZoom = 1.0;
+      });
+    } else {
+      _camera = null;
+      _torchOn = false;
+      _zoom = 1.0;
+      _maxZoom = 1.0;
+    }
+
+    try {
+      await camera.setFlashMode(FlashMode.off);
+    } catch (_) {}
+    try {
+      await camera.dispose();
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
@@ -58,7 +84,7 @@ class _ScanViewState extends ConsumerState<ScanView>
   @override
   void dispose() {
     _autoScanTimer?.cancel();
-    _camera?.dispose();
+    unawaited(_disposeCamera(updateState: false));
     _pulseController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -71,10 +97,7 @@ class _ScanViewState extends ConsumerState<ScanView>
 
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      final camera = _camera;
-      if (camera == null) return;
-      unawaited(camera.dispose());
-      setState(() => _camera = null);
+      unawaited(_disposeCamera(updateState: true));
       return;
     }
 
@@ -113,7 +136,10 @@ class _ScanViewState extends ConsumerState<ScanView>
     }
 
     try {
-      final cameras = await availableCameras();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      final cameras = await availableCameras().timeout(
+        const Duration(seconds: 6),
+      );
       if (cameras.isEmpty) {
         throw StateError('No cameras found');
       }
@@ -129,7 +155,7 @@ class _ScanViewState extends ConsumerState<ScanView>
         enableAudio: false,
       );
 
-      await controller.initialize();
+      await controller.initialize().timeout(const Duration(seconds: 10));
       _maxZoom = await controller.getMaxZoomLevel();
       await controller.setZoomLevel(_zoom.clamp(1.0, _maxZoom));
       await controller.setFlashMode(FlashMode.off);
@@ -144,6 +170,7 @@ class _ScanViewState extends ConsumerState<ScanView>
         _isInitializing = false;
         _cameraInitError = null;
         _permissionDenied = false;
+        _torchOn = false;
       });
     } catch (e) {
       if (!mounted) return;
@@ -166,7 +193,13 @@ class _ScanViewState extends ConsumerState<ScanView>
         await camera.setFlashMode(FlashMode.torch);
       }
       if (mounted) setState(() => _torchOn = !_torchOn);
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Flash not available on this device.')),
+        );
+      }
+    }
   }
 
   Future<void> _toggleZoom() async {
@@ -485,21 +518,15 @@ class _ScanViewState extends ConsumerState<ScanView>
   }
 
   Widget _buildZoomPill() {
-    return BlurPanel(
-      borderRadius: BorderRadius.circular(999),
-      sigma: 14,
-      color: Colors.black.withValues(alpha: 0.45),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Text(
-          '${_zoom.toStringAsFixed(_zoom < 2 ? 1 : 0)}×',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
-          ),
+    return _GlassPill(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        '${_zoom.toStringAsFixed(_zoom < 2 ? 1 : 0)}×',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
         ),
       ),
     );
@@ -528,17 +555,47 @@ class _ScanViewState extends ConsumerState<ScanView>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<VoiceAloudTab>(
+      appControllerProvider.select((s) => s.activeTab),
+      (previous, next) {
+        if (next == VoiceAloudTab.scan) {
+          if (_camera != null || _permissionDenied || _isInitializing) return;
+          if (_cameraInitError != null) return;
+          unawaited(_initCamera());
+          return;
+        }
+
+        if (previous == VoiceAloudTab.scan) {
+          _setAutoScan(false);
+          unawaited(_disposeCamera(updateState: true));
+        }
+      },
+    );
+
     if (isInTest) {
       return _MockScanUi(pulse: _pulseController);
     }
 
     if (_permissionDenied) {
-      return _PermissionDeniedView(onRetry: _initCamera);
+      return _PermissionDeniedView(
+        onRetry: _initCamera,
+        onBack:
+            () => ref
+                .read(appControllerProvider.notifier)
+                .setTab(VoiceAloudTab.library),
+      );
     }
 
     final error = _cameraInitError;
     if (error != null) {
-      return _CameraInitErrorView(message: error, onRetry: _initCamera);
+      return _CameraInitErrorView(
+        message: error,
+        onRetry: _initCamera,
+        onBack:
+            () => ref
+                .read(appControllerProvider.notifier)
+                .setTab(VoiceAloudTab.library),
+      );
     }
 
     return ColoredBox(
@@ -558,39 +615,48 @@ class _ScanViewState extends ConsumerState<ScanView>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _BlackCircleButton(
-                      onTap: _toggleTorch,
-                      child: LucideSvgIcon(
-                        'zap',
-                        size: 20,
-                        color: _torchOn ? VAColors.yellow400 : Colors.white,
-                      ),
+                    Row(
+                      children: [
+                        _BlackCircleButton(
+                          onTap: () {
+                            ref
+                                .read(appControllerProvider.notifier)
+                                .setTab(VoiceAloudTab.library);
+                          },
+                          child: const LucideSvgIcon(
+                            'chevron-left',
+                            size: 22,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _BlackCircleButton(
+                          onTap: _toggleTorch,
+                          child: LucideSvgIcon(
+                            'zap',
+                            size: 20,
+                            color: _torchOn ? VAColors.yellow400 : Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                     GestureDetector(
                       onTap: () => _setAutoScan(!_autoScan),
-                      child: BlurPanel(
-                        borderRadius: BorderRadius.circular(999),
-                        sigma: 14,
-                        color: Colors.black.withValues(alpha: 0.45),
-                        border: Border.all(
-                          color: VAColors.yellow400.withValues(
-                            alpha: _autoScan ? 0.9 : 0.25,
-                          ),
-                          width: 1,
+                      child: _GlassPill(
+                        borderColor: VAColors.yellow400.withValues(
+                          alpha: _autoScan ? 0.9 : 0.25,
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 6,
-                          ),
-                          child: Text(
-                            _autoScan ? 'AUTO SCAN ON' : 'AUTO SCAN',
-                            style: const TextStyle(
-                              color: VAColors.yellow400,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
-                            ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          _autoScan ? 'AUTO SCAN ON' : 'AUTO SCAN',
+                          style: const TextStyle(
+                            color: VAColors.yellow400,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
                           ),
                         ),
                       ),
@@ -610,13 +676,7 @@ class _ScanViewState extends ConsumerState<ScanView>
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: BlurPanel(
-                  borderRadius: BorderRadius.circular(28),
-                  sigma: 18,
-                  color: Colors.black.withValues(alpha: 0.72),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.10),
-                  ),
+                child: _GlassPanel(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
                     child: Row(
@@ -847,50 +907,30 @@ class _MockScanUi extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    BlurPanel(
-                      borderRadius: BorderRadius.circular(999),
-                      sigma: 14,
-                      color: Colors.black.withValues(alpha: 0.45),
-                      border: Border.all(
-                        color: VAColors.yellow400.withValues(alpha: 0.25),
-                        width: 1,
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        child: Text(
-                          'AUTO SCAN',
-                          style: TextStyle(
-                            color: VAColors.yellow400,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.0,
-                          ),
+                    _GlassPill(
+                      borderColor: VAColors.yellow400.withValues(alpha: 0.25),
+                      child: const Text(
+                        'AUTO SCAN',
+                        style: TextStyle(
+                          color: VAColors.yellow400,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
                         ),
                       ),
                     ),
-                    BlurPanel(
-                      borderRadius: BorderRadius.circular(999),
-                      sigma: 14,
-                      color: Colors.black.withValues(alpha: 0.45),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
+                    const _GlassPill(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        child: Text(
-                          '1.0×',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
+                      child: Text(
+                        '1.0×',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),
@@ -905,13 +945,7 @@ class _MockScanUi extends StatelessWidget {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: BlurPanel(
-                  borderRadius: BorderRadius.circular(28),
-                  sigma: 18,
-                  color: Colors.black.withValues(alpha: 0.72),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.10),
-                  ),
+                child: _GlassPanel(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
                     child: Row(
@@ -975,95 +1009,143 @@ class _MockScanUi extends StatelessWidget {
 }
 
 class _PermissionDeniedView extends StatelessWidget {
-  const _PermissionDeniedView({required this.onRetry});
+  const _PermissionDeniedView({required this.onRetry, required this.onBack});
 
   final Future<void> Function() onRetry;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Colors.black,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Camera permission required',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+      child: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: _BlackCircleButton(
+                  onTap: onBack,
+                  child: const LucideSvgIcon(
+                    'chevron-left',
+                    size: 22,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Enable camera permission to scan documents.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async => onRetry(),
-                child: const Text('Try again'),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: openAppSettings,
-                child: const Text('Open settings'),
-              ),
-            ],
+            ),
           ),
-        ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Camera permission required',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Enable camera permission to scan documents.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () async => onRetry(),
+                    child: const Text('Try again'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: openAppSettings,
+                    child: const Text('Open settings'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _CameraInitErrorView extends StatelessWidget {
-  const _CameraInitErrorView({required this.message, required this.onRetry});
+  const _CameraInitErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onBack,
+  });
 
   final String message;
   final Future<void> Function() onRetry;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Colors.black,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Camera failed to start',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+      child: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: _BlackCircleButton(
+                  onTap: onBack,
+                  child: const LucideSvgIcon(
+                    'chevron-left',
+                    size: 22,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async => onRetry(),
-                child: const Text('Retry'),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: openAppSettings,
-                child: const Text('Open settings'),
-              ),
-            ],
+            ),
           ),
-        ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Camera failed to start',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () async => onRetry(),
+                    child: const Text('Retry'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: openAppSettings,
+                    child: const Text('Open settings'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1113,6 +1195,65 @@ class _CornerAccent extends StatelessWidget {
   }
 }
 
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    this.borderColor,
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+  final Color? borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withValues(alpha: 0.12),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x40000000),
+            blurRadius: 24,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _GlassPanel extends StatelessWidget {
+  const _GlassPanel({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        color: Colors.black.withValues(alpha: 0.72),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 40,
+            offset: Offset(0, 18),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
 class _BlackCircleButton extends StatelessWidget {
   const _BlackCircleButton({required this.child, required this.onTap});
 
@@ -1123,11 +1264,22 @@ class _BlackCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: BlurPanel(
-        borderRadius: BorderRadius.circular(999),
-        sigma: 12,
-        color: Colors.black.withValues(alpha: 0.4),
-        child: SizedBox(width: 40, height: 40, child: Center(child: child)),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 24,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Center(child: child),
       ),
     );
   }

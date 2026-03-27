@@ -95,7 +95,11 @@ class _VoiceAloudAppPageState extends ConsumerState<VoiceAloudAppPage> {
               ],
             ),
           ),
-          _BottomNavBar(activeTab: appState.activeTab, onChanged: _setActiveTab),
+          if (appState.activeTab != VoiceAloudTab.scan)
+            _BottomNavBar(
+              activeTab: appState.activeTab,
+              onChanged: _setActiveTab,
+            ),
         ],
       ),
     );
@@ -233,10 +237,11 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
                       ),
                     ),
                   ),
-                  _BottomNavBar(
-                    activeTab: appState.activeTab,
-                    onChanged: _setActiveTab,
-                  ),
+                  if (appState.activeTab != VoiceAloudTab.scan)
+                    _BottomNavBar(
+                      activeTab: appState.activeTab,
+                      onChanged: _setActiveTab,
+                    ),
                 ],
               ),
               const Positioned(
