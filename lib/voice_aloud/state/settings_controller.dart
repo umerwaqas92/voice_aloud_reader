@@ -63,4 +63,14 @@ class SettingsController extends AsyncNotifier<VoiceAloudSettings> {
   Future<void> setVoiceName(String voiceName) async {
     await _update((s) => s.copyWith(voiceName: voiceName));
   }
+
+  Future<void> save(VoiceAloudSettings settings) async {
+    state = AsyncData(settings);
+    final repo = ref.read(settingsRepositoryProvider);
+    await repo.save(settings);
+  }
+
+  Future<void> completeOnboarding() async {
+    await _update((s) => s.copyWith(onboardingCompleted: true));
+  }
 }

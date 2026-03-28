@@ -36,6 +36,9 @@ class _ScanViewState extends ConsumerState<ScanView>
   bool _torchOn = false;
   double _scaleBaseZoom = 1.0;
   ProviderSubscription<VoiceAloudTab>? _tabSubscription;
+  bool _allowAutoCapture = false;
+  DateTime? _lastFocusAt;
+  ResolutionPreset _activeResolutionPreset = ResolutionPreset.veryHigh;
 
   Future<void> _disposeCamera({required bool updateState}) async {
     final camera = _camera;
@@ -49,12 +52,16 @@ class _ScanViewState extends ConsumerState<ScanView>
         _torchOn = false;
         _zoom = 1.0;
         _maxZoom = 1.0;
+        _allowAutoCapture = false;
+        _lastFocusAt = null;
       });
     } else {
       _camera = null;
       _torchOn = false;
       _zoom = 1.0;
       _maxZoom = 1.0;
+      _allowAutoCapture = false;
+      _lastFocusAt = null;
     }
 
     try {
@@ -144,6 +151,8 @@ class _ScanViewState extends ConsumerState<ScanView>
       _isInitializing = true;
       _cameraInitError = null;
       _permissionDenied = false;
+      _allowAutoCapture = false;
+      _lastFocusAt = null;
     });
 
     final status = await Permission.camera.request();
@@ -171,17 +180,25 @@ class _ScanViewState extends ConsumerState<ScanView>
         orElse: () => cameras.first,
       );
 
-      final controller = CameraController(
-        back,
+      CameraController? controller;
+      Object? initError;
+      for (final preset in const [
         ResolutionPreset.veryHigh,
-        enableAudio: false,
-        imageFormatGroup:
-            (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-                ? ImageFormatGroup.yuv420
-                : null,
-      );
+        ResolutionPreset.high,
+      ]) {
+        try {
+          controller = await _createInitializedController(back, preset);
+          _activeResolutionPreset = preset;
+          break;
+        } catch (e) {
+          initError = e;
+        }
+      }
 
-      await controller.initialize().timeout(const Duration(seconds: 10));
+      if (controller == null) {
+        throw initError ?? StateError('Camera initialization failed');
+      }
+
       _maxZoom = await controller.getMaxZoomLevel();
       await controller.setZoomLevel(_zoom.clamp(1.0, _maxZoom));
       await controller.setFlashMode(FlashMode.off);
@@ -197,6 +214,8 @@ class _ScanViewState extends ConsumerState<ScanView>
         _cameraInitError = null;
         _permissionDenied = false;
         _torchOn = false;
+        _allowAutoCapture = false;
+        _lastFocusAt = null;
       });
       _startBackgroundOcrPolling();
     } catch (e) {
@@ -204,8 +223,34 @@ class _ScanViewState extends ConsumerState<ScanView>
       setState(() {
         _camera = null;
         _isInitializing = false;
-        _cameraInitError = e.toString();
+        _cameraInitError =
+            'Camera failed to start at high quality (${_activeResolutionPreset.name}): ${e.toString()}';
       });
+    }
+  }
+
+  Future<CameraController> _createInitializedController(
+    CameraDescription back,
+    ResolutionPreset preset,
+  ) async {
+    final controller = CameraController(
+      back,
+      preset,
+      enableAudio: false,
+      imageFormatGroup:
+          (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+              ? ImageFormatGroup.yuv420
+              : null,
+    );
+
+    try {
+      await controller.initialize().timeout(const Duration(seconds: 10));
+      return controller;
+    } catch (_) {
+      try {
+        await controller.dispose();
+      } catch (_) {}
+      rethrow;
     }
   }
 
@@ -269,9 +314,17 @@ class _ScanViewState extends ConsumerState<ScanView>
   void _startBackgroundOcrPolling() {
     if (isInTest) return;
     _stopBackgroundOcrPolling();
-    _backgroundOcrTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _backgroundOcrTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
       if (!mounted) return;
       if (_isBusy) return;
+      if (!_allowAutoCapture) return;
+
+      final lastFocusAt = _lastFocusAt;
+      if (lastFocusAt == null) return;
+      if (DateTime.now().difference(lastFocusAt) <
+          const Duration(milliseconds: 700)) {
+        return;
+      }
 
       final camera = _camera;
       if (camera == null) return;
@@ -290,6 +343,22 @@ class _ScanViewState extends ConsumerState<ScanView>
         if (mounted) setState(() => _isBusy = false);
       }
     });
+  }
+
+  Future<void> _focusOnPoint(Offset localPosition, Size size) async {
+    final camera = _camera;
+    if (camera == null || _isBusy) return;
+
+    final dx = (localPosition.dx / size.width).clamp(0.0, 1.0);
+    final dy = (localPosition.dy / size.height).clamp(0.0, 1.0);
+    try {
+      await camera.setFocusPoint(Offset(dx, dy));
+      await camera.setExposurePoint(Offset(dx, dy));
+      await camera.setFocusMode(FocusMode.auto);
+      await camera.setExposureMode(ExposureMode.auto);
+      _allowAutoCapture = true;
+      _lastFocusAt = DateTime.now();
+    } catch (_) {}
   }
 
   Future<void> _recognizeAndReview(
@@ -411,33 +480,42 @@ class _ScanViewState extends ConsumerState<ScanView>
       );
     }
 
+    // [CameraPreview] already applies AspectRatio (and Android rotation). Do not
+    // wrap it in another AspectRatio — that distorts the preview (stretched text).
     final size = MediaQuery.sizeOf(context);
     final screenAspectRatio = size.width / size.height;
-    var scale = camera.value.aspectRatio / screenAspectRatio;
+    var scale = screenAspectRatio * camera.value.aspectRatio;
     if (scale < 1) scale = 1 / scale;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onScaleStart: (_) => _scaleBaseZoom = _zoom,
-      onScaleUpdate: (details) async {
-        if (_isBusy) return;
-        final next = (_scaleBaseZoom * details.scale).clamp(1.0, _maxZoom);
-        if ((next - _zoom).abs() < 0.02) return;
-        try {
-          await camera.setZoomLevel(next);
-          if (mounted) setState(() => _zoom = next);
-        } catch (_) {}
-      },
-      child: Transform.scale(
-        scale: scale,
-        filterQuality: FilterQuality.medium,
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: camera.value.aspectRatio,
-            child: CameraPreview(camera),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown:
+              (details) => _focusOnPoint(details.localPosition, size),
+          onScaleStart: (_) => _scaleBaseZoom = _zoom,
+          onScaleUpdate: (details) async {
+            if (_isBusy) return;
+            final next = (_scaleBaseZoom * details.scale).clamp(1.0, _maxZoom);
+            if ((next - _zoom).abs() < 0.02) return;
+            try {
+              await camera.setZoomLevel(next);
+              if (mounted) setState(() => _zoom = next);
+            } catch (_) {}
+          },
+          child: ClipRect(
+            child: Transform.scale(
+              scale: scale,
+              filterQuality: FilterQuality.none,
+              alignment: Alignment.center,
+              child: Center(
+                child: CameraPreview(camera),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

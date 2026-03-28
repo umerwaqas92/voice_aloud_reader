@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/providers.dart';
 import 'views/splash_view.dart';
+import 'views/onboarding_view.dart';
 import 'voice_aloud_mockup_page.dart';
 
 class VoiceAloudRoot extends ConsumerWidget {
@@ -11,8 +12,18 @@ class VoiceAloudRoot extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final init = ref.watch(appInitProvider);
+
     return init.when(
-      data: (_) => const VoiceAloudAppPage(),
+      data: (_) {
+        final settings = ref.watch(settingsControllerProvider).valueOrNull;
+        if (settings == null) {
+          return const SplashView();
+        }
+        if (!settings.onboardingCompleted) {
+          return const OnboardingView();
+        }
+        return const VoiceAloudAppPage();
+      },
       loading: () => const SplashView(),
       error:
           (e, _) => _InitErrorView(

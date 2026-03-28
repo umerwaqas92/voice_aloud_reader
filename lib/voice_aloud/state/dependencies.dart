@@ -15,9 +15,18 @@ import '../services/tts_service.dart';
 
 final appInitProvider = FutureProvider<void>((ref) async {
   if (isInTest) return;
-  await Hive.initFlutter();
-  await Hive.openBox<Map<dynamic, dynamic>>('documents');
-  await Hive.openBox<Map<dynamic, dynamic>>('prefs');
+  
+  final initFuture = Future(() async {
+    await Hive.initFlutter();
+    await Hive.openBox<Map<dynamic, dynamic>>('documents');
+    await Hive.openBox<Map<dynamic, dynamic>>('prefs');
+  });
+
+  // Ensure splash is visible for at least 2 seconds for a better user experience
+  await Future.wait([
+    initFuture,
+    Future.delayed(const Duration(seconds: 2)),
+  ]);
 });
 
 final documentRepositoryProvider = Provider<DocumentRepository>((ref) {

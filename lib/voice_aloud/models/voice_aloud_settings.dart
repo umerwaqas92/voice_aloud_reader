@@ -12,6 +12,7 @@ class VoiceAloudSettings {
     required this.keepScreenOn,
     required this.language,
     required this.voiceName,
+    required this.onboardingCompleted,
   });
 
   final double speechRate;
@@ -24,6 +25,7 @@ class VoiceAloudSettings {
   final bool keepScreenOn;
   final String language;
   final String voiceName;
+  final bool onboardingCompleted;
 
   static const defaults = VoiceAloudSettings(
     speechRate: 1.5,
@@ -36,6 +38,7 @@ class VoiceAloudSettings {
     keepScreenOn: true,
     language: '',
     voiceName: '',
+    onboardingCompleted: false,
   );
 
   VoiceAloudSettings copyWith({
@@ -49,6 +52,7 @@ class VoiceAloudSettings {
     bool? keepScreenOn,
     String? language,
     String? voiceName,
+    bool? onboardingCompleted,
   }) {
     return VoiceAloudSettings(
       speechRate: speechRate ?? this.speechRate,
@@ -61,6 +65,7 @@ class VoiceAloudSettings {
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       language: language ?? this.language,
       voiceName: voiceName ?? this.voiceName,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }
 
@@ -75,6 +80,7 @@ class VoiceAloudSettings {
     'keepScreenOn': keepScreenOn,
     'language': language,
     'voiceName': voiceName,
+    'onboardingCompleted': onboardingCompleted,
   };
 
   static VoiceAloudSettings fromJson(Map<dynamic, dynamic> json) {
@@ -112,6 +118,10 @@ class VoiceAloudSettings {
       keepScreenOn: readBool('keepScreenOn', defaults.keepScreenOn),
       language: (json['language'] ?? '').toString(),
       voiceName: (json['voiceName'] ?? '').toString(),
+      onboardingCompleted: readBool(
+        'onboardingCompleted',
+        defaults.onboardingCompleted,
+      ),
     );
   }
 }
