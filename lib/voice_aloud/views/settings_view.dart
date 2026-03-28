@@ -8,6 +8,7 @@ import '../state/providers.dart';
 import '../va_tokens.dart';
 import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
+import '../widgets/press_effect.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({super.key});
@@ -320,25 +321,14 @@ class _ReadingSpeed extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: VAColors.gray800,
+                  color: Colors.white,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: VAColors.blue50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${speed.toStringAsFixed(1)}x',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: VAColors.blue600,
-                ),
-              ),
+            _Stepper(
+              valueLabel: '${speed.toStringAsFixed(1)}x',
+              onDecrement: () => onChanged((speed - 0.1).clamp(0.5, 3.0)),
+              onIncrement: () => onChanged((speed + 0.1).clamp(0.5, 3.0)),
             ),
           ],
         ),
@@ -400,25 +390,14 @@ class _PitchSlider extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: VAColors.gray800,
+                  color: Colors.white,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: VAColors.blue50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Standard',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: VAColors.blue600,
-                ),
-              ),
+            _Stepper(
+              valueLabel: value.toStringAsFixed(2),
+              onDecrement: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
+              onIncrement: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
             ),
           ],
         ),
@@ -458,13 +437,13 @@ class _VolumeSlider extends StatelessWidget {
           'Volume',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: VAColors.gray800,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            const LucideSvgIcon('volume-2', size: 24, color: VAColors.gray400),
+            const LucideSvgIcon('volume-2', size: 24, color: Color(0xFFCBD5E1)),
             const SizedBox(width: 16),
             Expanded(
               child: SliderTheme(
@@ -483,9 +462,83 @@ class _VolumeSlider extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(width: 12),
+            _Stepper(
+              valueLabel: value.toStringAsFixed(2),
+              onDecrement: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
+              onIncrement: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
+            ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _Stepper extends StatelessWidget {
+  const _Stepper({
+    required this.valueLabel,
+    required this.onDecrement,
+    required this.onIncrement,
+  });
+
+  final String valueLabel;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _MiniIconButton(
+          iconName: 'minus',
+          onTap: onDecrement,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          valueLabel,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 8),
+        _MiniIconButton(
+          iconName: 'plus',
+          onTap: onIncrement,
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniIconButton extends StatelessWidget {
+  const _MiniIconButton({required this.iconName, required this.onTap});
+
+  final String iconName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressEffect(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Center(
+          child: LucideSvgIcon(
+            iconName,
+            size: 16,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }

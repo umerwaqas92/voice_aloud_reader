@@ -11,6 +11,8 @@ import '../voice_aloud_tab.dart';
 import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
 import '../widgets/press_effect.dart';
+import 'recents_view.dart';
+import '_recent_placeholder_note.dart';
 
 class LibraryView extends ConsumerWidget {
   const LibraryView({super.key});
@@ -20,13 +22,23 @@ class LibraryView extends ConsumerWidget {
     final docs = ref.watch(documentsControllerProvider);
 
     return AnimatedPageEntrance(
-      child: ColoredBox(
-        color: VAColors.libraryBackground,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              VAColors.gradientNightStart,
+              VAColors.gradientNightMid,
+              VAColors.gradientNightEnd,
+            ],
+          ),
+        ),
         child: Padding(
         padding: const EdgeInsets.only(top: 32),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: const BoxConstraints(maxWidth: 620),
             child: Column(
               children: [
                 Padding(
@@ -39,7 +51,7 @@ class LibraryView extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w700,
-                          color: VAColors.gray900,
+                          color: Colors.white,
                         ),
                       ),
                       PressEffect(
@@ -82,60 +94,54 @@ class LibraryView extends ConsumerWidget {
                                     .setTab(VoiceAloudTab.settings),
                         child: const _CloudSyncBanner(),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(8, 0, 8, 16),
-                        child: Text(
-                          'Recent Documents',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2.0,
-                            color: VAColors.gray400,
+                      const SizedBox(height: 12),
+                      PressEffect(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const RecentsView(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: VAColors.cardDark,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: VAColors.glassBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              Text(
+                                'Open Recents',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              LucideSvgIcon(
+                                'arrow-right',
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      ...docs.when(
-                        data: (items) {
-                          if (items.isEmpty) {
-                            return const [_EmptyStateCard()];
-                          }
-
-                          return [
-                            for (final entry in items.indexed) ...[
-                              _DocumentCard(
-                                document: entry.$2,
-                                index: entry.$1,
-                                onTap: () async {
-                                  await ref
-                                      .read(
-                                        documentsControllerProvider.notifier,
-                                      )
-                                      .markOpened(entry.$2.id);
-                                  ref
-                                      .read(appControllerProvider.notifier)
-                                      .openDocument(entry.$2.id);
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                          ];
-                        },
-                        loading:
-                            () => const [
-                              _LoadingStateCard(),
-                              SizedBox(height: 16),
-                              _LoadingStateCard(),
-                            ],
-                        error:
-                            (e, _) => [
-                              _ErrorStateCard(
-                                message: e.toString(),
-                                onRetry:
-                                    () => ref.invalidate(
-                                      documentsControllerProvider,
-                                    ),
-                              ),
-                            ],
+                      const SizedBox(height: 32),
+                      docs.when(
+                        data: (items) =>
+                            items.isEmpty
+                                ? const _EmptyStateCard()
+                                : const RecentPlaceholderNote(),
+                        loading: () => const _LoadingStateCard(),
+                        error: (e, _) => _ErrorStateCard(
+                          message: e.toString(),
+                          onRetry: () => ref.invalidate(
+                            documentsControllerProvider,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -202,141 +208,7 @@ class _CloudSyncBanner extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: LucideSvgIcon(
-                'zap_filled',
-                size: 20,
-                color: VAColors.yellow300,
-              ),
-            ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _DocumentCard extends StatelessWidget {
-  const _DocumentCard({
-    required this.document,
-    required this.index,
-    required this.onTap,
-  });
-
-  final Document document;
-  final int index;
-  final VoidCallback onTap;
-
-  ({Color bg, Color fg}) _coverColors() {
-    const palette = [
-      (bg: VAColors.orange100, fg: VAColors.orange600),
-      (bg: VAColors.blue100, fg: VAColors.blue600),
-      (bg: VAColors.emerald100, fg: VAColors.emerald600),
-      (bg: VAColors.purple100, fg: VAColors.purple600),
-    ];
-    return palette[index % palette.length];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = _coverColors();
-    return PressEffect(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0x80F3F4F6)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0A000000),
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 64,
-              decoration: BoxDecoration(
-                color: colors.bg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  document.title.isEmpty ? '' : document.title[0],
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: colors.fg,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    document.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: VAColors.gray800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    document.author.isEmpty ? ' ' : document.author,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: VAColors.gray400,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: SizedBox(
-                      height: 6,
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(color: VAColors.gray100),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FractionallySizedBox(
-                            widthFactor: document.progress,
-                            child: const DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: VAColors.blue500,
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(999),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
 class VAColors {
-  static const outerBackground = Color(0xFF0F172A);
-
+  static const outerBackground = Color(0xFF080C18);
   static const phoneBorder = Color(0xFF111827);
 
+  // Dark-first surfaces
+  static const bgDark = Color(0xFF0B1020);
+  static const surfaceDark = Color(0xFF0F172A);
+  static const cardDark = Color(0xFF111827);
+  static const glassBorder = Color(0x1A93C5FD);
+  static const glassHighlight = Color(0x14FFFFFF);
+
+  // Light surfaces
   static const readBackground = Color(0xFFFDFBF7);
   static const libraryBackground = Color(0xFFF8FAFC);
 
@@ -13,8 +20,8 @@ class VAColors {
   static const blue500 = Color(0xFF3B82F6);
   static const blue600 = Color(0xFF2563EB);
   static const blue700 = Color(0xFF1D4ED8);
-
   static const indigo600 = Color(0xFF4F46E5);
+  static const cyan500 = Color(0xFF06B6D4);
 
   static const gray50 = Color(0xFFF9FAFB);
   static const gray100 = Color(0xFFF3F4F6);
@@ -38,6 +45,11 @@ class VAColors {
 
   static const yellow300 = Color(0xFFFCD34D);
   static const yellow400 = Color(0xFFFBBF24);
+
+  // Accent gradients
+  static const gradientNightStart = Color(0xFF0B1224);
+  static const gradientNightMid = Color(0xFF0F1C34);
+  static const gradientNightEnd = Color(0xFF1E293B);
 }
 
 class VASizes {

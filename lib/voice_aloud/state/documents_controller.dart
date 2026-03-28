@@ -59,6 +59,24 @@ class DocumentsController extends AsyncNotifier<List<Document>> {
     state = AsyncData(current.where((d) => d.id != id).toList());
   }
 
+  Future<void> rename(String id, String newTitle) async {
+    final current = state.valueOrNull ?? const <Document>[];
+    final idx = current.indexWhere((d) => d.id == id);
+    if (idx < 0) return;
+
+    final doc = current[idx];
+    final updated = doc.copyWith(
+      title: newTitle.trim().isEmpty ? doc.title : newTitle.trim(),
+      updatedAt: DateTime.now(),
+    );
+    final repo = ref.read(documentRepositoryProvider);
+    await repo.upsert(updated);
+
+    final next = [...current];
+    next[idx] = updated;
+    state = AsyncData(next);
+  }
+
   Future<void> markOpened(String id) async {
     final current = state.valueOrNull ?? const <Document>[];
     final idx = current.indexWhere((d) => d.id == id);
