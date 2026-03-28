@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,16 +24,13 @@ class ScanView extends ConsumerStatefulWidget {
 }
 
 class _ScanViewState extends ConsumerState<ScanView>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late final AnimationController _pulseController;
-
+    with WidgetsBindingObserver {
   CameraController? _camera;
   bool _isInitializing = false;
   bool _permissionDenied = false;
   String? _cameraInitError;
   bool _isBusy = false;
-  bool _autoScan = false;
-  Timer? _autoScanTimer;
+  Timer? _backgroundOcrTimer;
   double _zoom = 1.0;
   double _maxZoom = 1.0;
   bool _torchOn = false;
@@ -41,6 +40,8 @@ class _ScanViewState extends ConsumerState<ScanView>
   Future<void> _disposeCamera({required bool updateState}) async {
     final camera = _camera;
     if (camera == null) return;
+
+    _stopBackgroundOcrPolling();
 
     if (updateState && mounted) {
       setState(() {
@@ -80,30 +81,20 @@ class _ScanViewState extends ConsumerState<ScanView>
         }
 
         if (previous == VoiceAloudTab.scan) {
-          _setAutoScan(false);
           unawaited(_disposeCamera(updateState: true));
         }
       },
     );
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-
-    if (isInTest) {
-      _pulseController.value = 1;
-    } else {
-      _pulseController.repeat(reverse: true);
+    if (!isInTest) {
       unawaited(_initCamera());
     }
   }
 
   @override
   void dispose() {
-    _autoScanTimer?.cancel();
+    _stopBackgroundOcrPolling();
     unawaited(_disposeCamera(updateState: false));
-    _pulseController.dispose();
     _tabSubscription?.close();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -138,6 +129,8 @@ class _ScanViewState extends ConsumerState<ScanView>
 
   Future<void> _initCamera() async {
     if (_isInitializing) return;
+
+    _stopBackgroundOcrPolling();
 
     final old = _camera;
     if (old != null) {
@@ -180,8 +173,12 @@ class _ScanViewState extends ConsumerState<ScanView>
 
       final controller = CameraController(
         back,
-        ResolutionPreset.high,
+        ResolutionPreset.veryHigh,
         enableAudio: false,
+        imageFormatGroup:
+            (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+                ? ImageFormatGroup.yuv420
+                : null,
       );
 
       await controller.initialize().timeout(const Duration(seconds: 10));
@@ -201,6 +198,7 @@ class _ScanViewState extends ConsumerState<ScanView>
         _permissionDenied = false;
         _torchOn = false;
       });
+      _startBackgroundOcrPolling();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -263,14 +261,16 @@ class _ScanViewState extends ConsumerState<ScanView>
     }
   }
 
-  void _setAutoScan(bool enabled) {
-    if (_autoScan == enabled) return;
-    setState(() => _autoScan = enabled);
-    _autoScanTimer?.cancel();
-    if (!enabled) return;
+  void _stopBackgroundOcrPolling() {
+    _backgroundOcrTimer?.cancel();
+    _backgroundOcrTimer = null;
+  }
 
-    _autoScanTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      if (!mounted || !_autoScan) return;
+  void _startBackgroundOcrPolling() {
+    if (isInTest) return;
+    _stopBackgroundOcrPolling();
+    _backgroundOcrTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) return;
       if (_isBusy) return;
 
       final camera = _camera;
@@ -283,7 +283,6 @@ class _ScanViewState extends ConsumerState<ScanView>
             .read(ocrServiceProvider)
             .recognizeTextFromFilePath(file.path);
         if (text.trim().length >= 80) {
-          _setAutoScan(false);
           await _showReviewSheet(text, source: DocumentSource.scan);
         }
       } catch (_) {
@@ -431,6 +430,7 @@ class _ScanViewState extends ConsumerState<ScanView>
       },
       child: Transform.scale(
         scale: scale,
+        filterQuality: FilterQuality.medium,
         child: Center(
           child: AspectRatio(
             aspectRatio: camera.value.aspectRatio,
@@ -438,111 +438,6 @@ class _ScanViewState extends ConsumerState<ScanView>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildViewfinderOverlay() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = constraints.biggest;
-        final holeWidth = mathMin(size.width * 0.84, 360);
-        final holeHeight = (holeWidth * 1.25).clamp(260.0, size.height * 0.62);
-        final hole = Rect.fromCenter(
-          center: Offset(size.width / 2, size.height / 2),
-          width: holeWidth,
-          height: holeHeight,
-        );
-
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _ViewfinderDimPainter(
-                  holeRect: hole,
-                  holeRadius: 16,
-                  overlayColor: Colors.black.withValues(alpha: 0.42),
-                ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: holeWidth,
-                height: holeHeight,
-                child: Stack(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    const Positioned(
-                      top: -4,
-                      left: -4,
-                      child: _CornerAccent(top: true, left: true),
-                    ),
-                    const Positioned(
-                      top: -4,
-                      right: -4,
-                      child: _CornerAccent(top: true, left: false),
-                    ),
-                    const Positioned(
-                      bottom: -4,
-                      left: -4,
-                      child: _CornerAccent(top: false, left: true),
-                    ),
-                    const Positioned(
-                      bottom: -4,
-                      right: -4,
-                      child: _CornerAccent(top: false, left: false),
-                    ),
-                    Positioned.fill(
-                      child: Center(
-                        child: AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, _) {
-                            final opacity =
-                                0.45 + (_pulseController.value * 0.55);
-                            return Opacity(
-                              opacity: opacity,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.35),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Keep text inside frame',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -561,31 +456,10 @@ class _ScanViewState extends ConsumerState<ScanView>
     );
   }
 
-  Future<void> _openAutoScanSheet() async {
-    final next = await showModalBottomSheet<bool>(
-      context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: SwitchListTile(
-            title: const Text('Auto Scan'),
-            value: _autoScan,
-            onChanged: (v) => Navigator.of(context).pop(v),
-          ),
-        );
-      },
-    );
-    if (next != null) _setAutoScan(next);
-  }
-
   @override
   Widget build(BuildContext context) {
     if (isInTest) {
-      return _MockScanUi(pulse: _pulseController);
+      return const _MockScanUi();
     }
 
     if (_permissionDenied) {
@@ -615,7 +489,6 @@ class _ScanViewState extends ConsumerState<ScanView>
       child: Stack(
         children: [
           Positioned.fill(child: _buildLivePreview()),
-          Positioned.fill(child: _buildViewfinderOverlay()),
           Positioned(
             top: 0,
             left: 0,
@@ -651,27 +524,6 @@ class _ScanViewState extends ConsumerState<ScanView>
                           ),
                         ),
                       ],
-                    ),
-                    GestureDetector(
-                      onTap: () => _setAutoScan(!_autoScan),
-                      child: _GlassPill(
-                        borderColor: VAColors.yellow400.withValues(
-                          alpha: _autoScan ? 0.9 : 0.25,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        child: Text(
-                          _autoScan ? 'AUTO SCAN ON' : 'AUTO SCAN',
-                          style: const TextStyle(
-                            color: VAColors.yellow400,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
                     ),
                     GestureDetector(
                       onTap: _toggleZoom,
@@ -730,14 +582,7 @@ class _ScanViewState extends ConsumerState<ScanView>
                             ),
                           ),
                         ),
-                        _GrayCircleButton(
-                          onTap: _openAutoScanSheet,
-                          child: const LucideSvgIcon(
-                            'settings',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ),
+                        const SizedBox(width: 48, height: 48),
                       ],
                     ),
                   ),
@@ -760,9 +605,7 @@ class _ScanViewState extends ConsumerState<ScanView>
 }
 
 class _MockScanUi extends StatelessWidget {
-  const _MockScanUi({required this.pulse});
-
-  final Animation<double> pulse;
+  const _MockScanUi();
 
   @override
   Widget build(BuildContext context) {
@@ -788,118 +631,6 @@ class _MockScanUi extends StatelessWidget {
           Positioned.fill(
             child: ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
           ),
-          Positioned.fill(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final size = constraints.biggest;
-                final holeWidth = mathMin(size.width * 0.84, 360);
-                final holeHeight = (holeWidth * 1.25).clamp(
-                  260.0,
-                  size.height * 0.62,
-                );
-                final hole = Rect.fromCenter(
-                  center: Offset(size.width / 2, size.height / 2),
-                  width: holeWidth,
-                  height: holeHeight,
-                );
-
-                return Stack(
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _ViewfinderDimPainter(
-                          holeRect: hole,
-                          holeRadius: 16,
-                          overlayColor: Colors.black.withValues(alpha: 0.42),
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.center,
-                      child: SizedBox(
-                        width: holeWidth,
-                        height: holeHeight,
-                        child: Stack(
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.16),
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            const Positioned(
-                              top: -4,
-                              left: -4,
-                              child: _CornerAccent(top: true, left: true),
-                            ),
-                            const Positioned(
-                              top: -4,
-                              right: -4,
-                              child: _CornerAccent(top: true, left: false),
-                            ),
-                            const Positioned(
-                              bottom: -4,
-                              left: -4,
-                              child: _CornerAccent(top: false, left: true),
-                            ),
-                            const Positioned(
-                              bottom: -4,
-                              right: -4,
-                              child: _CornerAccent(top: false, left: false),
-                            ),
-                            Positioned.fill(
-                              child: Center(
-                                child: AnimatedBuilder(
-                                  animation: pulse,
-                                  builder: (context, _) {
-                                    final opacity = 0.45 + (pulse.value * 0.55);
-                                    return Opacity(
-                                      opacity: opacity,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.35,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.12,
-                                            ),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Keep text inside frame',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 0.2,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
           Positioned(
             top: 0,
             left: 0,
@@ -911,25 +642,26 @@ class _MockScanUi extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _BlackCircleButton(
-                      onTap: () {},
-                      child: const LucideSvgIcon(
-                        'zap',
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                    _GlassPill(
-                      borderColor: VAColors.yellow400.withValues(alpha: 0.25),
-                      child: const Text(
-                        'AUTO SCAN',
-                        style: TextStyle(
-                          color: VAColors.yellow400,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
+                    Row(
+                      children: [
+                        _BlackCircleButton(
+                          onTap: () {},
+                          child: const LucideSvgIcon(
+                            'chevron-left',
+                            size: 22,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        _BlackCircleButton(
+                          onTap: () {},
+                          child: const LucideSvgIcon(
+                            'zap',
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                     const _GlassPill(
                       padding: EdgeInsets.symmetric(
@@ -999,14 +731,7 @@ class _MockScanUi extends StatelessWidget {
                             ),
                           ),
                         ),
-                        _GrayCircleButton(
-                          onTap: () {},
-                          child: const LucideSvgIcon(
-                            'settings',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ),
+                        const SizedBox(width: 48, height: 48),
                       ],
                     ),
                   ),
@@ -1163,60 +888,14 @@ class _CameraInitErrorView extends StatelessWidget {
   }
 }
 
-class _CornerAccent extends StatelessWidget {
-  const _CornerAccent({required this.top, required this.left});
-
-  final bool top;
-  final bool left;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top:
-                top
-                    ? const BorderSide(color: VAColors.yellow400, width: 4)
-                    : BorderSide.none,
-            bottom:
-                !top
-                    ? const BorderSide(color: VAColors.yellow400, width: 4)
-                    : BorderSide.none,
-            left:
-                left
-                    ? const BorderSide(color: VAColors.yellow400, width: 4)
-                    : BorderSide.none,
-            right:
-                !left
-                    ? const BorderSide(color: VAColors.yellow400, width: 4)
-                    : BorderSide.none,
-          ),
-          borderRadius: BorderRadius.only(
-            topLeft: top && left ? const Radius.circular(12) : Radius.zero,
-            topRight: top && !left ? const Radius.circular(12) : Radius.zero,
-            bottomLeft: !top && left ? const Radius.circular(12) : Radius.zero,
-            bottomRight:
-                !top && !left ? const Radius.circular(12) : Radius.zero,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _GlassPill extends StatelessWidget {
   const _GlassPill({
     required this.child,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-    this.borderColor,
   });
 
   final Widget child;
   final EdgeInsets padding;
-  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1226,7 +905,7 @@ class _GlassPill extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: borderColor ?? Colors.white.withValues(alpha: 0.12),
+          color: Colors.white.withValues(alpha: 0.12),
         ),
         boxShadow: const [
           BoxShadow(
@@ -1317,41 +996,6 @@ class _GrayCircleButton extends StatelessWidget {
         child: Center(child: child),
       ),
     );
-  }
-}
-
-class _ViewfinderDimPainter extends CustomPainter {
-  _ViewfinderDimPainter({
-    required this.holeRect,
-    required this.holeRadius,
-    required this.overlayColor,
-  });
-
-  final Rect holeRect;
-  final double holeRadius;
-  final Color overlayColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    canvas.saveLayer(rect, Paint());
-
-    canvas.drawRect(rect, Paint()..color = overlayColor);
-
-    final holeRRect = RRect.fromRectAndRadius(
-      holeRect,
-      Radius.circular(holeRadius),
-    );
-    canvas.drawRRect(holeRRect, Paint()..blendMode = BlendMode.clear);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_ViewfinderDimPainter oldDelegate) {
-    return holeRect != oldDelegate.holeRect ||
-        holeRadius != oldDelegate.holeRadius ||
-        overlayColor != oldDelegate.overlayColor;
   }
 }
 
