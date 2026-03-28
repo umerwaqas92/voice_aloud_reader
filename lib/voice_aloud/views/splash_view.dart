@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../va_tokens.dart';
+import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
 
 class SplashView extends StatefulWidget {
@@ -45,7 +46,8 @@ class _SplashViewState extends State<SplashView> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnimatedPageEntrance(
+      child: Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -136,6 +138,6 @@ class _SplashViewState extends State<SplashView> with SingleTickerProviderStateM
           ],
         ),
       ),
-    );
+    ));
   }
 }

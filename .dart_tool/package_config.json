@@ -236,6 +236,12 @@
       "languageVersion": "2.18"
     },
     {
+      "name": "google_fonts",
+      "rootUri": "file:///Users/umerwaqas/.pub-cache/hosted/pub.dev/google_fonts-6.3.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
       "name": "google_mlkit_commons",
       "rootUri": "file:///Users/umerwaqas/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.9.0",
       "packageUri": "lib/",

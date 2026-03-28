@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../va_tokens.dart';
+import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
 import '../state/settings_controller.dart';
 
@@ -54,9 +55,10 @@ class _OnboardingViewState extends ConsumerState<OnboardingView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return AnimatedPageEntrance(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
         child: Column(
           children: [
             Expanded(
@@ -167,7 +169,7 @@ class _OnboardingViewState extends ConsumerState<OnboardingView> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

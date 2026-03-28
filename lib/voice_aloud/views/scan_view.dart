@@ -13,7 +13,9 @@ import '../models/document.dart';
 import '../runtime_flags.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
+import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
+import '../widgets/press_effect.dart';
 import '../voice_aloud_tab.dart';
 
 class ScanView extends ConsumerStatefulWidget {
@@ -541,30 +543,35 @@ class _ScanViewState extends ConsumerState<ScanView>
     }
 
     if (_permissionDenied) {
-      return _PermissionDeniedView(
-        onRetry: _initCamera,
-        onBack:
-            () => ref
-                .read(appControllerProvider.notifier)
-                .setTab(VoiceAloudTab.library),
+      return AnimatedPageEntrance(
+        child: _PermissionDeniedView(
+          onRetry: _initCamera,
+          onBack:
+              () => ref
+                  .read(appControllerProvider.notifier)
+                  .setTab(VoiceAloudTab.library),
+        ),
       );
     }
 
     final error = _cameraInitError;
     if (error != null) {
-      return _CameraInitErrorView(
-        message: error,
-        onRetry: _initCamera,
-        onBack:
-            () => ref
-                .read(appControllerProvider.notifier)
-                .setTab(VoiceAloudTab.library),
+      return AnimatedPageEntrance(
+        child: _CameraInitErrorView(
+          message: error,
+          onRetry: _initCamera,
+          onBack:
+              () => ref
+                  .read(appControllerProvider.notifier)
+                  .setTab(VoiceAloudTab.library),
+        ),
       );
     }
 
-    return ColoredBox(
-      color: Colors.black,
-      child: Stack(
+    return AnimatedPageEntrance(
+      child: ColoredBox(
+        color: Colors.black,
+        child: Stack(
         children: [
           Positioned.fill(child: _buildLivePreview()),
           Positioned(
@@ -678,7 +685,7 @@ class _ScanViewState extends ConsumerState<ScanView>
             ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -1031,7 +1038,7 @@ class _BlackCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressEffect(
       onTap: onTap,
       child: Container(
         width: 40,
@@ -1062,7 +1069,7 @@ class _GrayCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressEffect(
       onTap: onTap,
       child: Container(
         width: 48,

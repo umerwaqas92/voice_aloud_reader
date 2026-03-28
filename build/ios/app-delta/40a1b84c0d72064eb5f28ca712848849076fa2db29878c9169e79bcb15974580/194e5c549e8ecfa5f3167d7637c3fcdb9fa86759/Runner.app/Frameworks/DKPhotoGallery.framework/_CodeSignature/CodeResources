@@ -6,7 +6,7 @@
 	<dict>
 		<key>DKPhotoGallery.bundle/Assets.car</key>
 		<data>
-		yF2msNqnoPoiVwlbPBZdD5Ya97I=
+		qduXLCGU1Qumf7lu6YJfiYGssh8=
 		</data>
 		<key>DKPhotoGallery.bundle/Base.lproj/DKPhotoGallery.strings</key>
 		<dict>
@@ -19,7 +19,7 @@
 		</dict>
 		<key>DKPhotoGallery.bundle/Info.plist</key>
 		<data>
-		3516qA9Xv5C4ags9xM4hdzmNwSo=
+		WtXL9EYYLyvJ3a5/is74SjhuNj0=
 		</data>
 		<key>DKPhotoGallery.bundle/PrivacyInfo.xcprivacy</key>
 		<data>
@@ -45,28 +45,20 @@
 		</dict>
 		<key>Info.plist</key>
 		<data>
-		AvQ3/83k8Qa0im6erU1C0+6Tvcc=
+		tiY6vJSppq/lbrVtzvuNMPeYqX0=
 		</data>
 	</dict>
 	<key>files2</key>
 	<dict>
 		<key>DKPhotoGallery.bundle/Assets.car</key>
 		<dict>
-			<key>hash</key>
-			<data>
-			yF2msNqnoPoiVwlbPBZdD5Ya97I=
-			</data>
 			<key>hash2</key>
 			<data>
-			OxZS5Hylvtl5uZrtO7BCRzIkF49LGSPFXhVEiN2JfHk=
+			nlwwuuGxfrGZUobEWN8UH2FLgkT2DtRDTVSNOskCFXA=
 			</data>
 		</dict>
 		<key>DKPhotoGallery.bundle/Base.lproj/DKPhotoGallery.strings</key>
 		<dict>
-			<key>hash</key>
-			<data>
-			NA0j4SwR2AsLRfnHuNxL8Z1By44=
-			</data>
 			<key>hash2</key>
 			<data>
 			SDI8mZH3KxLV35hSqjP1DaoT/Ur7RH3bmV+MnjMnx54=
@@ -76,21 +68,13 @@
 		</dict>
 		<key>DKPhotoGallery.bundle/Info.plist</key>
 		<dict>
-			<key>hash</key>
-			<data>
-			3516qA9Xv5C4ags9xM4hdzmNwSo=
-			</data>
 			<key>hash2</key>
 			<data>
-			DU9lCJhNrtyfJD1ffGe9feBW/40/6IR7MbbiJmFAPDU=
+			dSujDsDqf0h82IJqEvx8xOcrDn2/kbWFdb6WQt3eZv4=
 			</data>
 		</dict>
 		<key>DKPhotoGallery.bundle/PrivacyInfo.xcprivacy</key>
 		<dict>
-			<key>hash</key>
-			<data>
-			YLYZhRSzZVHV+D7U/AQzGNwF8Ug=
-			</data>
 			<key>hash2</key>
 			<data>
 			S5/UHVcXm+A0szmeblzHSHm8fdkVgUuu5mWh9E35hUE=
@@ -98,10 +82,6 @@
 		</dict>
 		<key>DKPhotoGallery.bundle/en.lproj/DKPhotoGallery.strings</key>
 		<dict>
-			<key>hash</key>
-			<data>
-			lBygwcHp7X/0n1lfhAX4rhrabvk=
-			</data>
 			<key>hash2</key>
 			<data>
 			79OWR8uzUiipYvXTl3V4OfE8HGNgQXp4Is5CjRpErmE=
@@ -111,10 +91,6 @@
 		</dict>
 		<key>DKPhotoGallery.bundle/zh-Hans.lproj/DKPhotoGallery.strings</key>
 		<dict>
-			<key>hash</key>
-			<data>
-			TC+NpTOWlgfdj3gzJygtTnl0V0o=
-			</data>
 			<key>hash2</key>
 			<data>
 			KI058+XFexomjnRqlnWcg5B3sueg9C1fAlugBgmGNzs=

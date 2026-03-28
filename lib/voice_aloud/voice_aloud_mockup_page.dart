@@ -8,10 +8,12 @@ import 'views/read_view.dart';
 import 'views/scan_view.dart';
 import 'views/settings_view.dart';
 import 'state/providers.dart';
+import 'widgets/animated_page_entrance.dart';
 import 'widgets/blur_panel.dart';
 import 'widgets/lazy_indexed_stack.dart';
 import 'widgets/lucide_svg_icon.dart';
 import 'widgets/phone_overlays.dart';
+import 'widgets/press_effect.dart';
 import 'voice_aloud_tab.dart';
 
 class VoiceAloudAppPage extends ConsumerStatefulWidget {
@@ -74,25 +76,44 @@ class _VoiceAloudAppPageState extends ConsumerState<VoiceAloudAppPage> {
       body: Column(
         children: [
           Expanded(
-            child: LazyIndexedStack(
-              index: appState.activeTab.index,
-              children: [
-                (_) => const LibraryView(),
-                (_) => ReadView(
-                  isPlaying: playback.isPlaying,
-                  showFontMenu: _showFontMenu,
-                  onTogglePlaying: () async {
-                    if (activeDoc == null) return;
-                    await ref
-                        .read(playbackControllerProvider.notifier)
-                        .toggle(activeDoc);
-                  },
-                  onToggleFontMenu:
-                      () => setState(() => _showFontMenu = !_showFontMenu),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder:
+                  (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.0, 0.02),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+              child: KeyedSubtree(
+                key: ValueKey(appState.activeTab),
+                child: LazyIndexedStack(
+                  index: appState.activeTab.index,
+                  children: [
+                    (_) => const LibraryView(),
+                    (_) => ReadView(
+                      isPlaying: playback.isPlaying,
+                      showFontMenu: _showFontMenu,
+                      onTogglePlaying: () async {
+                        if (activeDoc == null) return;
+                        await ref
+                            .read(playbackControllerProvider.notifier)
+                            .toggle(activeDoc);
+                      },
+                      onToggleFontMenu:
+                          () => setState(() => _showFontMenu = !_showFontMenu),
+                    ),
+                    (_) => const ScanView(),
+                    (_) => const SettingsView(),
+                  ],
                 ),
-                (_) => const ScanView(),
-                (_) => const SettingsView(),
-              ],
+              ),
             ),
           ),
           if (appState.activeTab != VoiceAloudTab.scan)
@@ -213,27 +234,46 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
                   Expanded(
                     child: ColoredBox(
                       color: Colors.white,
-                      child: LazyIndexedStack(
-                        index: appState.activeTab.index,
-                        children: [
-                          (_) => const LibraryView(),
-                          (_) => ReadView(
-                            isPlaying: playback.isPlaying,
-                            showFontMenu: _showFontMenu,
-                            onTogglePlaying: () async {
-                              if (activeDoc == null) return;
-                              await ref
-                                  .read(playbackControllerProvider.notifier)
-                                  .toggle(activeDoc);
-                            },
-                            onToggleFontMenu:
-                                () => setState(
-                                  () => _showFontMenu = !_showFontMenu,
-                                ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder:
+                            (child, animation) => FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0.0, 0.02),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            ),
+                        child: KeyedSubtree(
+                          key: ValueKey(appState.activeTab),
+                          child: LazyIndexedStack(
+                            index: appState.activeTab.index,
+                            children: [
+                              (_) => const LibraryView(),
+                              (_) => ReadView(
+                                isPlaying: playback.isPlaying,
+                                showFontMenu: _showFontMenu,
+                                onTogglePlaying: () async {
+                                  if (activeDoc == null) return;
+                                  await ref
+                                      .read(playbackControllerProvider.notifier)
+                                      .toggle(activeDoc);
+                                },
+                                onToggleFontMenu:
+                                    () => setState(
+                                      () => _showFontMenu = !_showFontMenu,
+                                    ),
+                              ),
+                              (_) => const ScanView(),
+                              (_) => const SettingsView(),
+                            ],
                           ),
-                          (_) => const ScanView(),
-                          (_) => const SettingsView(),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -277,7 +317,9 @@ class _BottomNavBar extends StatelessWidget {
       sigma: 18,
       color: Colors.white.withValues(alpha: 0.9),
       border: const Border(top: BorderSide(color: VAColors.gray100, width: 1)),
-      child: Padding(
+      child: AnimatedPageEntrance(
+        offsetY: 10,
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -308,7 +350,7 @@ class _BottomNavBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }
@@ -331,9 +373,8 @@ class _NavItem extends StatelessWidget {
     final color = isActive ? VAColors.blue600 : VAColors.gray400;
     final stroke = isActive ? 2.5 : 2.0;
 
-    return GestureDetector(
+    return PressEffect(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Column(

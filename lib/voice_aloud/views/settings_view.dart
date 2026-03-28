@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice_aloud_settings.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
+import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -16,9 +17,10 @@ class SettingsView extends ConsumerWidget {
     final settingsAsync = ref.watch(settingsControllerProvider);
     final settings = settingsAsync.valueOrNull ?? VoiceAloudSettings.defaults;
 
-    return ColoredBox(
-      color: VAColors.gray50,
-      child: Padding(
+    return AnimatedPageEntrance(
+      child: ColoredBox(
+        color: VAColors.gray50,
+        child: Padding(
         padding: const EdgeInsets.only(top: 32),
         child: Center(
           child: ConstrainedBox(
@@ -191,7 +193,7 @@ class SettingsView extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

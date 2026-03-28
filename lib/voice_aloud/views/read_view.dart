@@ -8,6 +8,7 @@ import '../models/voice_aloud_settings.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
 import '../voice_aloud_tab.dart';
+import '../widgets/animated_page_entrance.dart';
 import '../widgets/blur_panel.dart';
 import '../widgets/lucide_svg_icon.dart';
 
@@ -55,9 +56,10 @@ class ReadView extends ConsumerWidget {
     final iconColor =
         theme == ReaderThemeMode.dark ? VAColors.gray100 : VAColors.gray600;
 
-    return ColoredBox(
-      color: bgColor,
-      child: Stack(
+    return AnimatedPageEntrance(
+      child: ColoredBox(
+        color: bgColor,
+        child: Stack(
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 32),
@@ -225,7 +227,7 @@ class ReadView extends ConsumerWidget {
             ),
         ],
       ),
-    );
+    ));
   }
 }
 

@@ -8,7 +8,9 @@ import '../models/document.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
 import '../voice_aloud_tab.dart';
+import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
+import '../widgets/press_effect.dart';
 
 class LibraryView extends ConsumerWidget {
   const LibraryView({super.key});
@@ -17,9 +19,10 @@ class LibraryView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final docs = ref.watch(documentsControllerProvider);
 
-    return ColoredBox(
-      color: VAColors.libraryBackground,
-      child: Padding(
+    return AnimatedPageEntrance(
+      child: ColoredBox(
+        color: VAColors.libraryBackground,
+        child: Padding(
         padding: const EdgeInsets.only(top: 32),
         child: Center(
           child: ConstrainedBox(
@@ -39,7 +42,7 @@ class LibraryView extends ConsumerWidget {
                           color: VAColors.gray900,
                         ),
                       ),
-                      GestureDetector(
+                      PressEffect(
                         onTap: () => _showAddSheet(context, ref),
                         child: Container(
                           width: 44,
@@ -71,7 +74,7 @@ class LibraryView extends ConsumerWidget {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 128),
                     children: [
-                      GestureDetector(
+                      PressEffect(
                         onTap:
                             () =>
                                 ref
@@ -142,7 +145,7 @@ class LibraryView extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -244,8 +247,7 @@ class _DocumentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = _coverColors();
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return PressEffect(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
