@@ -44,190 +44,227 @@ class ReadView extends ConsumerWidget {
                 : doc.lastReadOffset);
 
     final theme = settings.themeMode;
-    final bgColor = switch (theme) {
-      ReaderThemeMode.light => VAColors.readBackground,
-      ReaderThemeMode.sepia => const Color(0xFFF4ECD8),
-      ReaderThemeMode.dark => VAColors.gray900,
-    };
-    final textColor =
-        theme == ReaderThemeMode.dark ? VAColors.gray100 : VAColors.gray800;
-    final titleColor =
-        theme == ReaderThemeMode.dark ? VAColors.gray50 : VAColors.gray900;
-    final iconColor =
-        theme == ReaderThemeMode.dark ? VAColors.gray100 : VAColors.gray600;
+    final bgColor = VAColors.obsidian;
+    final textColor = VAColors.cream.withValues(alpha: 0.85);
+    final titleColor = VAColors.cream;
+    final mutedColor = VAColors.muted;
 
     return AnimatedPageEntrance(
       child: ColoredBox(
         color: bgColor,
         child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 32),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _CircleIconButton(
-                        icon: LucideSvgIcon(
-                          'chevron-left',
-                          size: 24,
-                          color: iconColor,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        _LuxuryCircleButton(
+                          icon: LucideSvgIcon(
+                            'chevron-left',
+                            size: 24,
+                            color: mutedColor,
+                          ),
+                          onTap: () async {
+                            await ref
+                                .read(playbackControllerProvider.notifier)
+                                .stop();
+                            ref
+                                .read(appControllerProvider.notifier)
+                                .setTab(VoiceAloudTab.library);
+                          },
                         ),
-                        onTap: () async {
-                          await ref
-                              .read(playbackControllerProvider.notifier)
-                              .stop();
-                          ref
-                              .read(appControllerProvider.notifier)
-                              .setTab(VoiceAloudTab.library);
-                        },
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            doc?.title ?? 'Read',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.4,
-                              color: titleColor,
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              doc?.title ?? 'Read',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.4,
+                                color: titleColor,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Row(
+                        Row(
+                          children: [
+                            _LuxuryCircleButton(
+                              icon: LucideSvgIcon(
+                                'type',
+                                size: 20,
+                                color:
+                                    showFontMenu ? VAColors.gold : mutedColor,
+                              ),
+                              backgroundColor:
+                                  showFontMenu
+                                      ? VAColors.gold.withValues(alpha: 0.15)
+                                      : Colors.transparent,
+                              onTap: onToggleFontMenu,
+                            ),
+                            const SizedBox(width: 4),
+                            _LuxuryCircleButton(
+                              icon: LucideSvgIcon(
+                                'list',
+                                size: 20,
+                                color: mutedColor,
+                              ),
+                              onTap:
+                                  doc == null
+                                      ? null
+                                      : () => _showOutlineSheet(
+                                        context,
+                                        ref,
+                                        doc,
+                                        settings,
+                                      ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (doc != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
                         children: [
-                          _CircleIconButton(
-                            icon: LucideSvgIcon(
-                              'type',
-                              size: 20,
-                              color:
-                                  showFontMenu ? VAColors.blue600 : iconColor,
-                            ),
-                            backgroundColor:
-                                showFontMenu
-                                    ? VAColors.blue100
-                                    : Colors.transparent,
-                            onTap: onToggleFontMenu,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'PROGRESS',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.8,
+                                  color: mutedColor,
+                                ),
+                              ),
+                              Text(
+                                '${_calculateProgress(doc, offset)}%',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: VAColors.gold,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          _CircleIconButton(
-                            icon: LucideSvgIcon(
-                              'list',
-                              size: 20,
-                              color: iconColor,
-                            ),
-                            onTap:
-                                doc == null
-                                    ? null
-                                    : () => _showOutlineSheet(
-                                      context,
-                                      ref,
-                                      doc,
-                                      settings,
-                                    ),
+                          const SizedBox(height: 8),
+                          _LuxuryProgressBar(
+                            progress: _calculateProgress(doc, offset) / 100,
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 560),
-                      child:
-                          doc == null
-                              ? const _NoDocumentSelected()
-                              : _ReaderBody(
-                                document: doc,
-                                fontSize: settings.fontSize,
-                                titleColor: titleColor,
-                                textColor: textColor,
-                                isPlaying:
-                                    playback.isPlaying &&
-                                    playback.documentId == doc.id,
-                                highlightEnabled: settings.highlightSpokenText,
-                                autoScroll: settings.autoScroll,
-                                highlightStart:
-                                    playback.documentId == doc.id
-                                        ? playback.highlightStart
-                                        : null,
-                                highlightEnd:
-                                    playback.documentId == doc.id
-                                        ? playback.highlightEnd
-                                        : null,
-                                onParagraphTap:
-                                    (startOffset) async => ref
-                                        .read(
-                                          playbackControllerProvider.notifier,
-                                        )
-                                        .seekTo(doc, startOffset),
-                              ),
+                    ),
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child:
+                            doc == null
+                                ? const _NoDocumentSelected()
+                                : _ReaderBody(
+                                  document: doc,
+                                  fontSize: settings.fontSize,
+                                  titleColor: titleColor,
+                                  textColor: textColor,
+                                  isPlaying:
+                                      playback.isPlaying &&
+                                      playback.documentId == doc.id,
+                                  highlightEnabled:
+                                      settings.highlightSpokenText,
+                                  autoScroll: settings.autoScroll,
+                                  highlightStart:
+                                      playback.documentId == doc.id
+                                          ? playback.highlightStart
+                                          : null,
+                                  highlightEnd:
+                                      playback.documentId == doc.id
+                                          ? playback.highlightEnd
+                                          : null,
+                                  onParagraphTap:
+                                      (startOffset) async => ref
+                                          .read(
+                                            playbackControllerProvider.notifier,
+                                          )
+                                          .seekTo(doc, startOffset),
+                                ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 64,
-            right: 16,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: showFontMenu ? 1 : 0,
-              child: AnimatedScale(
-                duration: const Duration(milliseconds: 200),
-                scale: showFontMenu ? 1 : 0.96,
-                child: IgnorePointer(
-                  ignoring: !showFontMenu,
-                  child: _FontMenu(
-                    settings: settings,
-                    onFontSizeChanged:
-                        (size) => ref
-                            .read(settingsControllerProvider.notifier)
-                            .setFontSize(size),
-                    onThemeChanged:
-                        (mode) => ref
-                            .read(settingsControllerProvider.notifier)
-                            .setThemeMode(mode),
-                  ),
-                ),
+                ],
               ),
             ),
-          ),
-          if (doc != null)
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _BottomPlayer(
-                document: doc,
-                isPlaying: isPlaying,
-                currentOffset: offset,
-                speechRate: settings.speechRate,
-                onTogglePlaying: onTogglePlaying,
-                onSeek:
-                    (fraction) async => ref
-                        .read(playbackControllerProvider.notifier)
-                        .seekTo(doc, (doc.content.length * fraction).round()),
-                onSkip:
-                    (seconds) async => _skipBySeconds(
-                      ref,
-                      doc,
-                      offset,
-                      settings.speechRate,
-                      seconds,
+              top: 80,
+              right: 16,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: showFontMenu ? 1 : 0,
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 200),
+                  scale: showFontMenu ? 1 : 0.96,
+                  child: IgnorePointer(
+                    ignoring: !showFontMenu,
+                    child: _FontMenu(
+                      settings: settings,
+                      onFontSizeChanged:
+                          (size) => ref
+                              .read(settingsControllerProvider.notifier)
+                              .setFontSize(size),
+                      onThemeChanged:
+                          (mode) => ref
+                              .read(settingsControllerProvider.notifier)
+                              .setThemeMode(mode),
                     ),
+                  ),
+                ),
               ),
             ),
-        ],
+            if (doc != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _LuxuryBottomPlayer(
+                  document: doc,
+                  isPlaying: isPlaying,
+                  currentOffset: offset,
+                  speechRate: settings.speechRate,
+                  onTogglePlaying: onTogglePlaying,
+                  onSeek:
+                      (fraction) async => ref
+                          .read(playbackControllerProvider.notifier)
+                          .seekTo(doc, (doc.content.length * fraction).round()),
+                  onSkip:
+                      (seconds) async => _skipBySeconds(
+                        ref,
+                        doc,
+                        offset,
+                        settings.speechRate,
+                        seconds,
+                      ),
+                ),
+              ),
+          ],
+        ),
       ),
-    ));
+    );
+  }
+
+  int _calculateProgress(Document doc, int offset) {
+    if (doc.content.isEmpty) return 0;
+    return ((offset / doc.content.length) * 100).round().clamp(0, 100);
   }
 }
 
@@ -236,10 +273,10 @@ class _NoDocumentSelected extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
         'Select a document from Library',
-        style: TextStyle(fontWeight: FontWeight.w600, color: VAColors.gray500),
+        style: TextStyle(fontWeight: FontWeight.w600, color: VAColors.muted),
       ),
     );
   }
@@ -404,7 +441,7 @@ class _ReaderScrollViewState extends State<_ReaderScrollView> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 192),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 200),
       child: Column(
         children: [
           const SizedBox(height: 16),
@@ -412,10 +449,10 @@ class _ReaderScrollViewState extends State<_ReaderScrollView> {
             widget.title.toUpperCase(),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.4,
-              color: widget.titleColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 3.5,
+              color: VAColors.gold,
             ),
           ),
           const SizedBox(height: 32),
@@ -425,7 +462,7 @@ class _ReaderScrollViewState extends State<_ReaderScrollView> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => widget.onParagraphTap(entry.$2.startOffset),
-                child: _DropCapParagraph(
+                child: _LuxuryDropCapParagraph(
                   text: entry.$2.text,
                   paragraphStartOffset: entry.$2.startOffset,
                   highlightEnabled: widget.highlightEnabled,
@@ -444,8 +481,8 @@ class _ReaderScrollViewState extends State<_ReaderScrollView> {
   }
 }
 
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
+class _LuxuryCircleButton extends StatelessWidget {
+  const _LuxuryCircleButton({
     required this.icon,
     required this.onTap,
     this.backgroundColor = Colors.transparent,
@@ -466,8 +503,38 @@ class _CircleIconButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
           shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
         ),
         child: Center(child: icon),
+      ),
+    );
+  }
+}
+
+class _LuxuryProgressBar extends StatelessWidget {
+  const _LuxuryProgressBar({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 3,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: FractionallySizedBox(
+          widthFactor: progress.clamp(0.0, 1.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: VAColors.gold,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -493,17 +560,17 @@ class _FontMenu extends StatelessWidget {
     final theme = settings.themeMode;
 
     return Container(
-      width: 288,
-      padding: const EdgeInsets.all(20),
+      width: 260,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: VAColors.gray100),
-        boxShadow: const [
+        color: VAColors.panel,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.2)),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x26000000),
-            blurRadius: 40,
-            offset: Offset(0, 16),
+            color: Colors.black.withValues(alpha: 0.6),
+            blurRadius: 60,
+            offset: const Offset(0, 20),
           ),
         ],
       ),
@@ -513,93 +580,69 @@ class _FontMenu extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Font Size',
+              Text(
+                'FONT SIZE',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 1.4,
-                  color: VAColors.gray500,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: VAColors.gray50,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  children: [
-                    _FontSizeDot(
-                      text: 'A',
-                      fontSize: 14,
-                      selected:
-                          (selectedSize - _small).abs() <
-                          (selectedSize - _large).abs(),
-                      onTap: () => onFontSizeChanged(_small),
-                    ),
-                    _FontSizeDot(
-                      text: 'A',
-                      fontSize: 18,
-                      selected:
-                          (selectedSize - _large).abs() <=
-                          (selectedSize - _small).abs(),
-                      onTap: () => onFontSizeChanged(_large),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Theme',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.4,
-                  color: VAColors.gray500,
+                  letterSpacing: 2,
+                  color: VAColors.muted,
                 ),
               ),
               Row(
                 children: [
-                  _ThemeDot(
-                    color: Colors.white,
-                    border: Border.all(
-                      color:
-                          theme == ReaderThemeMode.light
-                              ? VAColors.blue500
-                              : VAColors.gray300,
-                      width: theme == ReaderThemeMode.light ? 2 : 1,
-                    ),
+                  _FontSizeButton(
+                    text: 'A',
+                    fontSize: 14,
+                    selected:
+                        (selectedSize - _small).abs() <
+                        (selectedSize - _large).abs(),
+                    onTap: () => onFontSizeChanged(_small),
+                  ),
+                  const SizedBox(width: 8),
+                  _FontSizeButton(
+                    text: 'A',
+                    fontSize: 18,
+                    selected:
+                        (selectedSize - _large).abs() <=
+                        (selectedSize - _small).abs(),
+                    onTap: () => onFontSizeChanged(_large),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'THEME',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2,
+                  color: VAColors.muted,
+                ),
+              ),
+              Row(
+                children: [
+                  _ThemeButton(
+                    color: VAColors.obsidian,
+                    isSelected: theme == ReaderThemeMode.dark,
+                    onTap: () => onThemeChanged(ReaderThemeMode.dark),
+                  ),
+                  const SizedBox(width: 8),
+                  _ThemeButton(
+                    color: const Color(0xFF1C1712),
+                    isSelected: theme == ReaderThemeMode.light,
                     onTap: () => onThemeChanged(ReaderThemeMode.light),
                   ),
-                  const SizedBox(width: 12),
-                  _ThemeDot(
-                    color: const Color(0xFFF4ECD8),
-                    border: Border.all(
-                      color:
-                          theme == ReaderThemeMode.sepia
-                              ? VAColors.blue500
-                              : VAColors.gray300,
-                      width: theme == ReaderThemeMode.sepia ? 2 : 1,
-                    ),
+                  const SizedBox(width: 8),
+                  _ThemeButton(
+                    color: VAColors.cream,
+                    isSelected: theme == ReaderThemeMode.sepia,
                     onTap: () => onThemeChanged(ReaderThemeMode.sepia),
-                  ),
-                  const SizedBox(width: 12),
-                  _ThemeDot(
-                    color: VAColors.gray900,
-                    border: Border.all(
-                      color:
-                          theme == ReaderThemeMode.dark
-                              ? VAColors.blue500
-                              : VAColors.gray900,
-                      width: theme == ReaderThemeMode.dark ? 2 : 1,
-                    ),
-                    onTap: () => onThemeChanged(ReaderThemeMode.dark),
                   ),
                 ],
               ),
@@ -611,8 +654,8 @@ class _FontMenu extends StatelessWidget {
   }
 }
 
-class _FontSizeDot extends StatelessWidget {
-  const _FontSizeDot({
+class _FontSizeButton extends StatelessWidget {
+  const _FontSizeButton({
     required this.text,
     required this.fontSize,
     required this.selected,
@@ -628,22 +671,18 @@ class _FontSizeDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow:
+          color:
               selected
-                  ? const [
-                    BoxShadow(
-                      color: Color(0x12000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
+                  ? VAColors.gold.withValues(alpha: 0.15)
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border:
+              selected
+                  ? Border.all(color: VAColors.gold.withValues(alpha: 0.3))
                   : null,
         ),
         child: Center(
@@ -652,7 +691,10 @@ class _FontSizeDot extends StatelessWidget {
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: FontWeight.w600,
-              color: VAColors.gray800,
+              color:
+                  selected
+                      ? VAColors.goldBright
+                      : VAColors.cream.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -661,15 +703,15 @@ class _FontSizeDot extends StatelessWidget {
   }
 }
 
-class _ThemeDot extends StatelessWidget {
-  const _ThemeDot({
+class _ThemeButton extends StatelessWidget {
+  const _ThemeButton({
     required this.color,
-    required this.border,
+    required this.isSelected,
     required this.onTap,
   });
 
   final Color color;
-  final BoxBorder border;
+  final bool isSelected;
   final VoidCallback onTap;
 
   @override
@@ -682,22 +724,34 @@ class _ThemeDot extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: border,
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
-          ],
+          border: Border.all(
+            color:
+                isSelected
+                    ? VAColors.gold
+                    : Colors.white.withValues(alpha: 0.1),
+            width: isSelected ? 2 : 1.5,
+          ),
         ),
+        child:
+            isSelected
+                ? Center(
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: VAColors.gold,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                )
+                : null,
       ),
     );
   }
 }
 
-class _BottomPlayer extends StatelessWidget {
-  const _BottomPlayer({
+class _LuxuryBottomPlayer extends StatelessWidget {
+  const _LuxuryBottomPlayer({
     required this.document,
     required this.isPlaying,
     required this.currentOffset,
@@ -725,177 +779,298 @@ class _BottomPlayer extends StatelessWidget {
     final totalSeconds = _estimateTotalSeconds(document.content, speechRate);
     final elapsedSeconds = (totalSeconds * progress).round();
 
-    return BlurPanel(
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(VASizes.bottomPanelRadius),
-        topRight: Radius.circular(VASizes.bottomPanelRadius),
-      ),
-      sigma: 20,
-      color: Colors.white.withValues(alpha: 0.8),
-      border: const Border(top: BorderSide(color: Colors.white, width: 1)),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x14000000),
-          blurRadius: 40,
-          offset: Offset(0, -10),
+    return Container(
+      decoration: BoxDecoration(
+        color: VAColors.voidColor.withValues(alpha: 0.95),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(
+          top: BorderSide(color: VAColors.gold.withValues(alpha: 0.15)),
         ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    _mmss(elapsedSeconds),
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: VAColors.gray400,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: (details) {
-                          final width = constraints.maxWidth;
-                          final localX = details.localPosition.dx.clamp(
-                            0.0,
-                            width,
-                          );
-                          onSeek(localX / width);
-                        },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: Container(
-                            height: 6,
-                            color: VAColors.gray200,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: FractionallySizedBox(
-                                widthFactor: progress,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: VAColors.blue600,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    _mmss(totalSeconds),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: VAColors.gray400,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _SkipButton(iconName: 'skip-back', onTap: () => onSkip(-15)),
-                const SizedBox(width: 32),
-                GestureDetector(
-                  onTap: onTogglePlaying,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: VAColors.blue600,
-                      shape: BoxShape.circle,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x4D2563EB),
-                          blurRadius: 22,
-                          offset: Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Transform.translate(
-                        offset: isPlaying ? Offset.zero : const Offset(2, 0),
-                        child: LucideSvgIcon(
-                          isPlaying ? 'pause_filled' : 'play_filled',
-                          size: 32,
-                          color: Colors.white,
-                        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 60,
+            offset: const Offset(0, -20),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LuxuryWaveform(isPlaying: isPlaying),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 32,
+                    child: Text(
+                      _mmss(elapsedSeconds),
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: VAColors.muted,
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 32),
-                _SkipButton(iconName: 'skip-forward', onTap: () => onSkip(15)),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) {
+                        final box = context.findRenderObject() as RenderBox;
+                        final width = box.size.width - 80;
+                        final localX = details.localPosition.dx.clamp(
+                          0.0,
+                          width,
+                        );
+                        onSeek(localX / width);
+                      },
+                      child: _LuxuryProgressBar(progress: progress),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 32,
+                    child: Text(
+                      _mmss(totalSeconds),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: VAColors.muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _SpeedButton(speechRate: speechRate),
+                  const SizedBox(width: 16),
+                  _SkipButton(
+                    iconName: 'skip-back',
+                    label: '15s',
+                    onTap: () => onSkip(-15),
+                  ),
+                  const SizedBox(width: 20),
+                  _LuxuryPlayButton(
+                    isPlaying: isPlaying,
+                    onTap: onTogglePlaying,
+                  ),
+                  const SizedBox(width: 20),
+                  _SkipButton(
+                    iconName: 'skip-forward',
+                    label: '15s',
+                    onTap: () => onSkip(15),
+                  ),
+                  const SizedBox(width: 16),
+                  _VoiceButton(),
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _LuxuryWaveform extends StatefulWidget {
+  const _LuxuryWaveform({required this.isPlaying});
+
+  final bool isPlaying;
+
+  @override
+  State<_LuxuryWaveform> createState() => _LuxuryWaveformState();
+}
+
+class _LuxuryWaveformState extends State<_LuxuryWaveform> {
+  @override
+  Widget build(BuildContext context) {
+    final heights = [
+      0.4,
+      0.7,
+      0.9,
+      0.55,
+      1.0,
+      0.75,
+      0.45,
+      0.85,
+      0.6,
+      0.3,
+      0.8,
+      0.5,
+      0.65,
+      0.4,
+      0.25,
+    ];
+
+    return SizedBox(
+      height: 32,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(15, (index) {
+          final height = heights[index] * 32;
+          return AnimatedContainer(
+            duration: Duration(milliseconds: 300 + index * 50),
+            width: 3,
+            height: widget.isPlaying ? height : height * 0.5,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+            decoration: BoxDecoration(
+              color: VAColors.gold.withValues(alpha: 0.15 + index * 0.03),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _SpeedButton extends StatelessWidget {
+  const _SpeedButton({required this.speechRate});
+
+  final double speechRate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: VAColors.gold.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bolt, size: 13, color: VAColors.gold),
+          const SizedBox(width: 4),
+          Text(
+            '${speechRate.toStringAsFixed(1)}x',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: VAColors.gold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoiceButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: VAColors.gold.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.mic, size: 13, color: VAColors.gold),
+          const SizedBox(width: 4),
+          Text(
+            'Aria',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: VAColors.gold,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _SkipButton extends StatelessWidget {
-  const _SkipButton({required this.iconName, required this.onTap});
+  const _SkipButton({
+    required this.iconName,
+    required this.label,
+    required this.onTap,
+  });
 
   final String iconName;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 56,
-        height: 56,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            LucideSvgIcon(
-              iconName,
-              size: 32,
-              color: VAColors.gray800,
-              strokeWidth: 1.5,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LucideSvgIcon(
+            iconName,
+            size: 28,
+            color: VAColors.cream,
+            strokeWidth: 1.8,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: VAColors.muted,
             ),
-            const SizedBox(height: 2),
-            const Text(
-              '15',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: VAColors.gray500,
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LuxuryPlayButton extends StatelessWidget {
+  const _LuxuryPlayButton({required this.isPlaying, required this.onTap});
+
+  final bool isPlaying;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          color: VAColors.gold,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: VAColors.gold.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
           ],
+        ),
+        child: Center(
+          child:
+              isPlaying
+                  ? Icon(Icons.pause, size: 26, color: VAColors.obsidian)
+                  : Icon(Icons.play_arrow, size: 26, color: VAColors.obsidian),
         ),
       ),
     );
   }
 }
 
-class _DropCapParagraph extends StatelessWidget {
-  const _DropCapParagraph({
+class _LuxuryDropCapParagraph extends StatelessWidget {
+  const _LuxuryDropCapParagraph({
     required this.text,
     required this.paragraphStartOffset,
     required this.highlightEnabled,
@@ -919,73 +1094,25 @@ class _DropCapParagraph extends StatelessWidget {
   Widget build(BuildContext context) {
     final paragraphStyle = TextStyle(
       fontSize: fontSize,
-      height: 1.65,
+      height: 1.9,
       color: textColor,
     );
-    final highlightStyle = paragraphStyle.copyWith(
-      backgroundColor: VAColors.yellow300.withValues(alpha: 0.65),
-      color: VAColors.gray900,
-      fontWeight: FontWeight.w700,
-    );
-
-    (int, int)? highlightRange() {
-      if (!highlightEnabled) return null;
-      final start = highlightStart;
-      final end = highlightEnd;
-      if (start == null || end == null) return null;
-
-      final relStart =
-          (start - paragraphStartOffset).clamp(0, text.length).toInt();
-      final relEnd = (end - paragraphStartOffset).clamp(0, text.length).toInt();
-      if (relStart >= relEnd) return null;
-      return (relStart, relEnd);
-    }
-
-    List<InlineSpan> buildSpans(String chunk, (int, int)? range) {
-      if (range == null) return [TextSpan(text: chunk)];
-      final (s, e) = range;
-      if (s <= 0 && e >= chunk.length) {
-        return [TextSpan(text: chunk, style: highlightStyle)];
-      }
-
-      final spans = <InlineSpan>[];
-      if (s > 0) spans.add(TextSpan(text: chunk.substring(0, s)));
-      spans.add(TextSpan(text: chunk.substring(s, e), style: highlightStyle));
-      if (e < chunk.length) spans.add(TextSpan(text: chunk.substring(e)));
-      return spans;
-    }
 
     if (!withDropCap || text.isEmpty) {
-      final range = highlightRange();
       return Padding(
         padding: const EdgeInsets.only(bottom: 24),
-        child: Text.rich(
-          TextSpan(
-            children: [
-              const WidgetSpan(child: SizedBox(width: 32)),
-              ...buildSpans(text, range),
-            ],
-          ),
+        child: Text(
+          text,
           textAlign: TextAlign.justify,
-          style: paragraphStyle,
+          style: paragraphStyle.copyWith(
+            color: textColor.withValues(alpha: 0.75),
+          ),
         ),
       );
     }
 
     final first = text.substring(0, 1);
     final rest = text.substring(1);
-    final range = highlightRange();
-    final firstHighlighted =
-        range != null && range.$1 <= 0 && range.$2 >= 1 && first.isNotEmpty;
-    final restRange =
-        range == null
-            ? null
-            : (
-              (range.$1 - 1).clamp(0, rest.length).toInt(),
-              (range.$2 - 1).clamp(0, rest.length).toInt(),
-            );
-    final effectiveRestRange =
-        restRange == null || restRange.$1 >= restRange.$2 ? null : restRange;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -994,36 +1121,24 @@ class _DropCapParagraph extends StatelessWidget {
         children: [
           Transform.translate(
             offset: const Offset(0, -4),
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(
-                first,
-                style:
-                    (() {
-                      final dropCapStyle = paragraphStyle.copyWith(
-                        fontSize: fontSize * 2.67,
-                        height: 1,
-                        fontWeight: FontWeight.w700,
-                      );
-                      if (!firstHighlighted) return dropCapStyle;
-                      return dropCapStyle.copyWith(
-                        backgroundColor: highlightStyle.backgroundColor,
-                        color: highlightStyle.color,
-                      );
-                    })(),
+            child: Text(
+              first,
+              style: paragraphStyle.copyWith(
+                fontSize: fontSize * 2.8,
+                height: 0.8,
+                fontWeight: FontWeight.w600,
+                color: VAColors.gold,
               ),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  const WidgetSpan(child: SizedBox(width: 32)),
-                  ...buildSpans(rest, effectiveRestRange),
-                ],
-              ),
+            child: Text(
+              rest,
               textAlign: TextAlign.justify,
-              style: paragraphStyle,
+              style: paragraphStyle.copyWith(
+                color: textColor.withValues(alpha: 0.75),
+              ),
             ),
           ),
         ],
@@ -1109,6 +1224,7 @@ Future<void> _showOutlineSheet(
   await showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    backgroundColor: VAColors.panel,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -1123,7 +1239,7 @@ Future<void> _showOutlineSheet(
             final title =
                 snippet.length <= 60 ? snippet : '${snippet.substring(0, 60)}…';
             return ListTile(
-              title: Text(title),
+              title: Text(title, style: TextStyle(color: VAColors.cream)),
               onTap: () async {
                 await ref
                     .read(playbackControllerProvider.notifier)

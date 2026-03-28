@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'voice_aloud/voice_aloud_root.dart';
 
@@ -12,56 +11,31 @@ void main() {
 class VoxlyApp extends StatelessWidget {
   const VoxlyApp({super.key});
 
-  static const _seedBlue = Color(0xFF2563EB);
-  static const _surfaceTint = Color(0xFFF3F6FB);
-  static const _foreground = Color(0xFF0F172A);
+  static const _obsidian = Color(0xFF07070F);
+  static const _gold = Color(0xFFC9A84C);
+  static const _cream = Color(0xFFEDE8DC);
+  static const _muted = Color(0xFF7B7A8E);
 
   @override
   Widget build(BuildContext context) {
-    final baseText = GoogleFonts.manropeTextTheme();
-    final textTheme = baseText.copyWith(
-      displayLarge: GoogleFonts.sora(
-        fontSize: 52,
-        fontWeight: FontWeight.w800,
-        color: _foreground,
-      ),
-      headlineLarge: GoogleFonts.sora(
-        fontSize: 34,
-        fontWeight: FontWeight.w700,
-        color: _foreground,
-      ),
-      titleLarge: GoogleFonts.sora(
-        fontSize: 26,
-        fontWeight: FontWeight.w700,
-        color: _foreground,
-      ),
-      bodyLarge: baseText.bodyLarge?.copyWith(height: 1.45, color: _foreground),
-      bodyMedium: baseText.bodyMedium?.copyWith(height: 1.5, color: _foreground),
-      labelLarge: baseText.labelLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.2,
-      ),
-    );
-
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _seedBlue,
-      brightness: Brightness.light,
-      primary: _seedBlue,
-      surface: Colors.white,
-      onSurface: _foreground,
-      onPrimary: Colors.white,
-      secondary: const Color(0xFF0EA5E9),
+      seedColor: _gold,
+      brightness: Brightness.dark,
+      primary: _gold,
+      secondary: _gold,
+      surface: const Color(0xFF0D0D1A),
+      onSurface: _cream,
+      onPrimary: _obsidian,
     );
 
     return ProviderScope(
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Voice Aloud Reader',
+        title: 'VoxLux',
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: colorScheme,
-          scaffoldBackgroundColor: _surfaceTint,
-          textTheme: textTheme,
+          scaffoldBackgroundColor: _obsidian,
           pageTransitionsTheme: const PageTransitionsTheme(
             builders: {
               TargetPlatform.android: _FadeSlideTransitionBuilder(),
@@ -72,55 +46,49 @@ class VoxlyApp extends StatelessWidget {
             },
           ),
           cardTheme: CardThemeData(
-            color: Colors.white,
-            shadowColor: const Color(0x220F172A),
-            surfaceTintColor: Colors.white,
+            color: const Color(0xFF1A1A2E),
+            shadowColor: Colors.black54,
+            surfaceTintColor: Colors.transparent,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: const BorderSide(color: Color(0x1A1D4ED8)),
+              side: BorderSide(color: _gold.withValues(alpha: 0.15)),
             ),
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
-              backgroundColor: _seedBlue,
-              foregroundColor: Colors.white,
+              backgroundColor: _gold,
+              foregroundColor: _obsidian,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              textStyle: textTheme.labelLarge,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
             ),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _seedBlue,
-              foregroundColor: Colors.white,
+              backgroundColor: _gold,
+              foregroundColor: _obsidian,
               elevation: 0,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              textStyle: textTheme.labelLarge,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
             ),
           ),
           outlinedButtonTheme: OutlinedButtonThemeData(
             style: OutlinedButton.styleFrom(
-              foregroundColor: _foreground,
-              side: const BorderSide(color: Color(0x331E40AF)),
+              foregroundColor: _cream,
+              side: BorderSide(color: _gold.withValues(alpha: 0.3)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              textStyle: textTheme.labelLarge,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
           ),
           textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              foregroundColor: _seedBlue,
-              textStyle: textTheme.labelLarge,
-            ),
+            style: TextButton.styleFrom(foregroundColor: _gold),
           ),
           snackBarTheme: const SnackBarThemeData(
             behavior: SnackBarBehavior.floating,
@@ -143,7 +111,10 @@ class _FadeSlideTransitionBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+    );
     return FadeTransition(
       opacity: curved,
       child: SlideTransition(

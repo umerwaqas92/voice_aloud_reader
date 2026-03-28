@@ -20,222 +20,219 @@ class SettingsView extends ConsumerWidget {
 
     return AnimatedPageEntrance(
       child: ColoredBox(
-        color: VAColors.gray50,
+        color: VAColors.obsidian,
         child: Padding(
-        padding: const EdgeInsets.only(top: 32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 128),
-              children: [
-                const Text(
-                  'Settings',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    color: VAColors.gray900,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'Voice & Playback',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2.2,
-                      color: VAColors.gray400,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _Card(
-                  child: Column(
+          padding: const EdgeInsets.only(top: 16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 128),
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ReadingSpeed(
-                        speed: settings.speechRate,
-                        onChanged:
-                            (value) => ref
-                                .read(settingsControllerProvider.notifier)
-                                .setSpeechRate(value),
+                      Text(
+                        'PREFERENCES',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 2.5,
+                          color: VAColors.muted,
+                        ),
                       ),
-                      const _Divider(),
-                      _PitchSlider(
-                        value: settings.pitch,
-                        onChanged:
-                            (value) => ref
-                                .read(settingsControllerProvider.notifier)
-                                .setPitch(value),
-                      ),
-                      const _Divider(),
-                      _VolumeSlider(
-                        value: settings.volume,
-                        onChanged:
-                            (value) => ref
-                                .read(settingsControllerProvider.notifier)
-                                .setVolume(value),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Settings',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.8,
+                          color: VAColors.cream,
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'Reader',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2.2,
-                      color: VAColors.gray400,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _Card(
-                  child: Column(
-                    children: [
-                      _ToggleRow(
-                        title: 'Highlight spoken word',
-                        subtitle: 'Highlights the word being read aloud',
-                        value: settings.highlightSpokenText,
-                        onChanged:
-                            (enabled) => ref
-                                .read(settingsControllerProvider.notifier)
-                                .toggleHighlight(enabled),
-                      ),
-                      const _Divider(),
-                      _ToggleRow(
-                        title: 'Auto-scroll while reading',
-                        subtitle: 'Keeps the spoken text visible',
-                        value: settings.autoScroll,
-                        onChanged:
-                            (enabled) => ref
-                                .read(settingsControllerProvider.notifier)
-                                .toggleAutoScroll(enabled),
-                      ),
-                      const _Divider(),
-                      _ToggleRow(
-                        title: 'Keep screen on',
-                        subtitle: 'Prevents screen from sleeping while playing',
-                        value: settings.keepScreenOn,
-                        onChanged:
-                            (enabled) => ref
-                                .read(settingsControllerProvider.notifier)
-                                .toggleKeepScreenOn(enabled),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'Language & Voice (40+ Supported)',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2.2,
-                      color: VAColors.gray400,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0x80F3F4F6)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x0A000000),
-                        blurRadius: 10,
-                        offset: Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      _SettingsRow(
-                        title: 'Language',
-                        subtitle:
-                            settings.language.trim().isEmpty
-                                ? 'English, Chinese, French...'
-                                : settings.language,
-                        onTap:
-                            () =>
-                                _pickLanguage(context, ref, settings.language),
-                      ),
-                      const _InsetDivider(),
-                      _SettingsRow(
-                        title: 'Selected Voice',
-                        subtitle:
-                            settings.voiceName.trim().isEmpty
-                                ? 'Samantha (Enhanced)'
-                                : settings.voiceName,
-                        subtitleColor: VAColors.blue600,
-                        onTap:
-                            () => _pickVoice(context, ref, settings.language),
-                      ),
-                    ],
-                  ),
-                ),
-                if (settingsAsync.hasError) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 32),
                   Text(
-                    settingsAsync.error.toString(),
-                    style: const TextStyle(color: Colors.red),
+                    'VOICE & PLAYBACK',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 3,
+                      color: VAColors.muted.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _LuxuryCard(
+                    child: Column(
+                      children: [
+                        _ReadingSpeed(
+                          speed: settings.speechRate,
+                          onChanged:
+                              (value) => ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .setSpeechRate(value),
+                        ),
+                        const _LuxuryDivider(),
+                        _PitchSlider(
+                          value: settings.pitch,
+                          onChanged:
+                              (value) => ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .setPitch(value),
+                        ),
+                        const _LuxuryDivider(),
+                        _VolumeSlider(
+                          value: settings.volume,
+                          onChanged:
+                              (value) => ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .setVolume(value),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'LANGUAGE & VOICE',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 3,
+                      color: VAColors.muted.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _LuxuryCard(
+                    child: Column(
+                      children: [
+                        _SettingsRow(
+                          title: 'Language',
+                          subtitle:
+                              settings.language.trim().isEmpty
+                                  ? 'English, Chinese, French...'
+                                  : settings.language,
+                          onTap:
+                              () => _pickLanguage(
+                                context,
+                                ref,
+                                settings.language,
+                              ),
+                        ),
+                        const _InsetDivider(),
+                        _SettingsRow(
+                          title: 'Selected Voice',
+                          subtitle:
+                              settings.voiceName.trim().isEmpty
+                                  ? 'Aria (Enhanced)'
+                                  : settings.voiceName,
+                          subtitleColor: VAColors.gold,
+                          onTap:
+                              () => _pickVoice(context, ref, settings.language),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'APPEARANCE',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 3,
+                      color: VAColors.muted.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _LuxuryCard(
+                    child: Column(
+                      children: [
+                        _ToggleRow(
+                          title: 'Dark Mode',
+                          subtitle: 'Elegant obsidian theme',
+                          value: true,
+                          onChanged: (enabled) {},
+                        ),
+                        const _InsetDivider(),
+                        _ToggleRow(
+                          title: 'Auto-Scroll',
+                          subtitle: 'Follow reading progress',
+                          value: settings.autoScroll,
+                          onChanged:
+                              (enabled) => ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .toggleAutoScroll(enabled),
+                        ),
+                        const _InsetDivider(),
+                        _ToggleRow(
+                          title: 'Haptic Feedback',
+                          subtitle: 'Subtle vibrations on events',
+                          value: settings.keepScreenOn,
+                          onChanged:
+                              (enabled) => ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .toggleKeepScreenOn(enabled),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (settingsAsync.hasError) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      settingsAsync.error.toString(),
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                  Center(
+                    child: Text(
+                      'VoxLux v2.4.1',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.8,
+                        color: VAColors.muted.withValues(alpha: 0.4),
+                      ),
+                    ),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.child});
+class _LuxuryCard extends StatelessWidget {
+  const _LuxuryCard({required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x80F3F4F6)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
+        color: VAColors.panel,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.1)),
       ),
       child: child,
     );
   }
 }
 
-class _Divider extends StatelessWidget {
-  const _Divider();
+class _LuxuryDivider extends StatelessWidget {
+  const _LuxuryDivider();
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 24),
-      child: SizedBox(
-        height: 1,
-        width: double.infinity,
-        child: ColoredBox(color: VAColors.gray100),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Container(height: 1, color: Colors.white.withValues(alpha: 0.06)),
     );
   }
 }
@@ -248,7 +245,7 @@ class _InsetDivider extends StatelessWidget {
     return Container(
       height: 1,
       margin: const EdgeInsets.only(left: 16),
-      color: VAColors.gray100,
+      color: Colors.white.withValues(alpha: 0.06),
     );
   }
 }
@@ -276,26 +273,57 @@ class _ToggleRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: VAColors.gray800,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: VAColors.cream.withValues(alpha: 0.9),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 14, color: VAColors.gray500),
+                style: TextStyle(fontSize: 12, color: VAColors.muted),
               ),
             ],
           ),
         ),
-        Switch.adaptive(
-          value: value,
-          activeThumbColor: VAColors.blue600,
-          activeTrackColor: VAColors.blue100,
-          onChanged: onChanged,
-        ),
+        _LuxurySwitch(value: value, onChanged: onChanged),
       ],
+    );
+  }
+}
+
+class _LuxurySwitch extends StatelessWidget {
+  const _LuxurySwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 44,
+        height: 24,
+        decoration: BoxDecoration(
+          color: value ? VAColors.gold : Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 18,
+            height: 18,
+            margin: EdgeInsets.only(left: value ? 3 : 0, right: value ? 0 : 3),
+            decoration: BoxDecoration(
+              color: value ? VAColors.obsidian : Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -314,32 +342,40 @@ class _ReadingSpeed extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Reading Speed',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: VAColors.cream.withValues(alpha: 0.9),
                 ),
               ),
             ),
-            _Stepper(
-              valueLabel: '${speed.toStringAsFixed(1)}x',
-              onDecrement: () => onChanged((speed - 0.1).clamp(0.5, 3.0)),
-              onIncrement: () => onChanged((speed + 0.1).clamp(0.5, 3.0)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: VAColors.gold.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${speed.toStringAsFixed(1)}x',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: VAColors.gold,
+                ),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 12),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor: VAColors.blue600,
-            inactiveTrackColor: VAColors.gray100,
-            thumbColor: VAColors.blue600,
-            overlayColor: VAColors.blue100.withValues(alpha: 0.3),
-            trackHeight: 6,
+            activeTrackColor: VAColors.gold,
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.12),
+            thumbColor: VAColors.gold,
+            overlayColor: VAColors.gold.withValues(alpha: 0.3),
+            trackHeight: 3,
           ),
           child: Slider(
             min: 0.5,
@@ -350,7 +386,7 @@ class _ReadingSpeed extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('0.5x', style: _ScaleLabelStyle()),
@@ -366,7 +402,7 @@ class _ReadingSpeed extends StatelessWidget {
 
 class _ScaleLabelStyle extends TextStyle {
   const _ScaleLabelStyle()
-    : super(fontSize: 12, fontWeight: FontWeight.w600, color: VAColors.gray400);
+    : super(fontSize: 11, fontWeight: FontWeight.w600, color: VAColors.muted);
 }
 
 class _PitchSlider extends StatelessWidget {
@@ -383,32 +419,29 @@ class _PitchSlider extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Voice Pitch',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: VAColors.cream.withValues(alpha: 0.9),
                 ),
               ),
             ),
-            _Stepper(
-              valueLabel: value.toStringAsFixed(2),
-              onDecrement: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
-              onIncrement: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
+            Text(
+              'Standard',
+              style: TextStyle(fontSize: 13, color: VAColors.muted),
             ),
           ],
         ),
         const SizedBox(height: 12),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor: VAColors.blue600,
-            inactiveTrackColor: VAColors.gray100,
-            thumbColor: VAColors.blue600,
-            overlayColor: VAColors.blue100.withValues(alpha: 0.3),
-            trackHeight: 6,
+            activeTrackColor: VAColors.gold,
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.12),
+            thumbColor: VAColors.gold,
+            overlayColor: VAColors.gold.withValues(alpha: 0.3),
+            trackHeight: 3,
           ),
           child: Slider(
             min: 0,
@@ -433,26 +466,26 @@ class _VolumeSlider extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Volume',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: VAColors.cream.withValues(alpha: 0.9),
           ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            const LucideSvgIcon('volume-2', size: 24, color: Color(0xFFCBD5E1)),
-            const SizedBox(width: 16),
+            Icon(Icons.volume_up, size: 20, color: VAColors.muted),
+            const SizedBox(width: 12),
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: VAColors.blue600,
-                  inactiveTrackColor: VAColors.gray100,
-                  thumbColor: VAColors.blue600,
-                  overlayColor: VAColors.blue100.withValues(alpha: 0.3),
-                  trackHeight: 6,
+                  activeTrackColor: VAColors.gold,
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.12),
+                  thumbColor: VAColors.gold,
+                  overlayColor: VAColors.gold.withValues(alpha: 0.3),
+                  trackHeight: 3,
                 ),
                 child: Slider(
                   min: 0,
@@ -463,82 +496,10 @@ class _VolumeSlider extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            _Stepper(
-              valueLabel: value.toStringAsFixed(2),
-              onDecrement: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
-              onIncrement: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
-            ),
+            Icon(Icons.volume_up, size: 20, color: VAColors.muted),
           ],
         ),
       ],
-    );
-  }
-}
-
-class _Stepper extends StatelessWidget {
-  const _Stepper({
-    required this.valueLabel,
-    required this.onDecrement,
-    required this.onIncrement,
-  });
-
-  final String valueLabel;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _MiniIconButton(
-          iconName: 'minus',
-          onTap: onDecrement,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          valueLabel,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 8),
-        _MiniIconButton(
-          iconName: 'plus',
-          onTap: onIncrement,
-        ),
-      ],
-    );
-  }
-}
-
-class _MiniIconButton extends StatelessWidget {
-  const _MiniIconButton({required this.iconName, required this.onTap});
-
-  final String iconName;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return PressEffect(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        child: Center(
-          child: LucideSvgIcon(
-            iconName,
-            size: 16,
-            color: Colors.white,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -548,7 +509,7 @@ class _SettingsRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.subtitleColor = VAColors.gray500,
+    this.subtitleColor = VAColors.muted,
   });
 
   final String title;
@@ -562,7 +523,7 @@ class _SettingsRow extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
             Expanded(
@@ -571,11 +532,9 @@ class _SettingsRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: VAColors.gray800,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: VAColors.cream.withValues(alpha: 0.9),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -583,18 +542,14 @@ class _SettingsRow extends StatelessWidget {
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, color: subtitleColor),
+                    style: TextStyle(fontSize: 13, color: subtitleColor),
                   ),
                 ],
               ),
             ),
             Transform.rotate(
               angle: math.pi,
-              child: const LucideSvgIcon(
-                'chevron-left',
-                size: 20,
-                color: VAColors.gray300,
-              ),
+              child: Icon(Icons.chevron_left, size: 20, color: VAColors.muted),
             ),
           ],
         ),
@@ -612,6 +567,7 @@ Future<void> _pickLanguage(
 
   await showModalBottomSheet<void>(
     context: context,
+    backgroundColor: VAColors.panel,
     showDragHandle: true,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
@@ -639,8 +595,11 @@ Future<void> _pickLanguage(
                   final lang = items[index];
                   final selected = lang == current;
                   return ListTile(
-                    title: Text(lang),
-                    trailing: selected ? const Icon(Icons.check) : null,
+                    title: Text(lang, style: TextStyle(color: VAColors.cream)),
+                    trailing:
+                        selected
+                            ? Icon(Icons.check, color: VAColors.gold)
+                            : null,
                     onTap: () async {
                       await ref
                           .read(settingsControllerProvider.notifier)
@@ -670,6 +629,7 @@ Future<void> _pickVoice(
 
   await showModalBottomSheet<void>(
     context: context,
+    backgroundColor: VAColors.panel,
     showDragHandle: true,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
@@ -716,7 +676,7 @@ Future<void> _pickVoice(
                 itemBuilder: (context, index) {
                   final name = names[index];
                   return ListTile(
-                    title: Text(name),
+                    title: Text(name, style: TextStyle(color: VAColors.cream)),
                     onTap: () async {
                       await ref
                           .read(settingsControllerProvider.notifier)

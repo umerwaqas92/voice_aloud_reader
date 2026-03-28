@@ -19,7 +19,7 @@ import 'voice_aloud_tab.dart';
 class VoiceAloudAppPage extends ConsumerStatefulWidget {
   const VoiceAloudAppPage({
     super.key,
-    this.initialTab = VoiceAloudTab.library,
+    this.initialTab = VoiceAloudTab.read,
     this.initialIsPlaying = false,
     this.initialSpeed = 1.5,
     this.initialShowFontMenu = false,
@@ -73,55 +73,207 @@ class _VoiceAloudAppPageState extends ConsumerState<VoiceAloudAppPage> {
             );
 
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder:
-                  (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.0, 0.02),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [VAColors.obsidian, VAColors.voidColor, VAColors.deep],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder:
+                      (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.0, 0.02),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                  child: KeyedSubtree(
+                    key: ValueKey(appState.activeTab),
+                    child: LazyIndexedStack(
+                      index: appState.activeTab.index,
+                      children: [
+                        (_) => const LibraryView(),
+                        (_) => ReadView(
+                          isPlaying: playback.isPlaying,
+                          showFontMenu: _showFontMenu,
+                          onTogglePlaying: () async {
+                            if (activeDoc == null) return;
+                            await ref
+                                .read(playbackControllerProvider.notifier)
+                                .toggle(activeDoc);
+                          },
+                          onToggleFontMenu:
+                              () => setState(
+                                () => _showFontMenu = !_showFontMenu,
+                              ),
+                        ),
+                        (_) => const ScanView(),
+                        (_) => const SettingsView(),
+                      ],
                     ),
                   ),
-              child: KeyedSubtree(
-                key: ValueKey(appState.activeTab),
-                child: LazyIndexedStack(
-                  index: appState.activeTab.index,
-                  children: [
-                    (_) => const LibraryView(),
-                    (_) => ReadView(
-                      isPlaying: playback.isPlaying,
-                      showFontMenu: _showFontMenu,
-                      onTogglePlaying: () async {
-                        if (activeDoc == null) return;
-                        await ref
-                            .read(playbackControllerProvider.notifier)
-                            .toggle(activeDoc);
-                      },
-                      onToggleFontMenu:
-                          () => setState(() => _showFontMenu = !_showFontMenu),
-                    ),
-                    (_) => const ScanView(),
-                    (_) => const SettingsView(),
-                  ],
                 ),
               ),
-            ),
+              if (appState.activeTab != VoiceAloudTab.scan)
+                _LuxuryBottomNavBar(
+                  activeTab: appState.activeTab,
+                  onChanged: _setActiveTab,
+                ),
+            ],
           ),
-          if (appState.activeTab != VoiceAloudTab.scan)
-            _BottomNavBar(
-              activeTab: appState.activeTab,
-              onChanged: _setActiveTab,
-            ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LuxuryBottomNavBar extends StatelessWidget {
+  const _LuxuryBottomNavBar({required this.activeTab, required this.onChanged});
+
+  final VoiceAloudTab activeTab;
+  final ValueChanged<VoiceAloudTab> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: VAColors.voidColor.withValues(alpha: 0.96),
+        border: Border(
+          top: BorderSide(
+            color: VAColors.gold.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 60,
+            offset: const Offset(0, -20),
+          ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _LuxuryNavItem(
+                iconName: 'book',
+                label: 'Library',
+                isActive: activeTab == VoiceAloudTab.library,
+                onTap: () => onChanged(VoiceAloudTab.library),
+              ),
+              _LuxuryNavItem(
+                iconName: 'file-text',
+                label: 'Read',
+                isActive: activeTab == VoiceAloudTab.read,
+                onTap: () => onChanged(VoiceAloudTab.read),
+              ),
+              _LuxuryNavItem(
+                iconName: 'camera',
+                label: 'Scan',
+                isActive: activeTab == VoiceAloudTab.scan,
+                onTap: () => onChanged(VoiceAloudTab.scan),
+              ),
+              _LuxuryNavItem(
+                iconName: 'settings',
+                label: 'Settings',
+                isActive: activeTab == VoiceAloudTab.settings,
+                onTap: () => onChanged(VoiceAloudTab.settings),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LuxuryNavItem extends StatelessWidget {
+  const _LuxuryNavItem({
+    required this.iconName,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String iconName;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isActive ? VAColors.gold : VAColors.muted;
+    final stroke = isActive ? 2.5 : 2.0;
+
+    return PressEffect(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: isActive ? 8 : 0,
+              height: 8,
+              margin: const EdgeInsets.only(bottom: 6),
+              decoration: BoxDecoration(
+                color: VAColors.gold,
+                shape: BoxShape.circle,
+                boxShadow:
+                    isActive
+                        ? [
+                          BoxShadow(
+                            color: VAColors.gold.withValues(alpha: 0.6),
+                            blurRadius: 8,
+                          ),
+                        ]
+                        : null,
+              ),
+            ),
+            AnimatedScale(
+              duration: const Duration(milliseconds: 200),
+              scale: isActive ? 1.1 : 1.0,
+              child: LucideSvgIcon(
+                iconName,
+                size: 22,
+                color: color,
+                strokeWidth: stroke,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+                color:
+                    isActive
+                        ? VAColors.gold
+                        : VAColors.muted.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -211,17 +363,22 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
       height: VASizes.phoneHeight,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: VAColors.obsidian,
           borderRadius: BorderRadius.circular(VASizes.phoneRadius),
           border: Border.all(
             color: VAColors.phoneBorder,
             width: VASizes.phoneBorderWidth,
           ),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x33000000),
+              color: Colors.black.withValues(alpha: 0.9),
+              blurRadius: 120,
+              offset: const Offset(0, 40),
+            ),
+            BoxShadow(
+              color: VAColors.gold.withValues(alpha: 0.1),
               blurRadius: 40,
-              offset: Offset(0, 24),
+              spreadRadius: -10,
             ),
           ],
         ),
@@ -229,11 +386,12 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
           borderRadius: BorderRadius.circular(VASizes.phoneRadius),
           child: Stack(
             children: [
+              _LuxuryBackground(),
               Column(
                 children: [
                   Expanded(
-                    child: ColoredBox(
-                      color: Colors.white,
+                    child: Container(
+                      color: VAColors.obsidian,
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 260),
                         switchInCurve: Curves.easeOutCubic,
@@ -278,7 +436,7 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
                     ),
                   ),
                   if (appState.activeTab != VoiceAloudTab.scan)
-                    _BottomNavBar(
+                    _LuxuryBottomNavBar(
                       activeTab: appState.activeTab,
                       onChanged: _setActiveTab,
                     ),
@@ -304,103 +462,37 @@ class _VoiceAloudPhoneFrameState extends ConsumerState<VoiceAloudPhoneFrame> {
   }
 }
 
-class _BottomNavBar extends StatelessWidget {
-  const _BottomNavBar({required this.activeTab, required this.onChanged});
-
-  final VoiceAloudTab activeTab;
-  final ValueChanged<VoiceAloudTab> onChanged;
-
+class _LuxuryBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlurPanel(
-      borderRadius: BorderRadius.zero,
-      sigma: 18,
-      color: Colors.white.withValues(alpha: 0.9),
-      border: const Border(top: BorderSide(color: VAColors.gray100, width: 1)),
-      child: AnimatedPageEntrance(
-        offsetY: 10,
-        child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _NavItem(
-              iconName: 'book',
-              label: 'Library',
-              isActive: activeTab == VoiceAloudTab.library,
-              onTap: () => onChanged(VoiceAloudTab.library),
-            ),
-            _NavItem(
-              iconName: 'file-text',
-              label: 'Read',
-              isActive: activeTab == VoiceAloudTab.read,
-              onTap: () => onChanged(VoiceAloudTab.read),
-            ),
-            _NavItem(
-              iconName: 'camera',
-              label: 'Scan',
-              isActive: activeTab == VoiceAloudTab.scan,
-              onTap: () => onChanged(VoiceAloudTab.scan),
-            ),
-            _NavItem(
-              iconName: 'settings',
-              label: 'Settings',
-              isActive: activeTab == VoiceAloudTab.settings,
-              onTap: () => onChanged(VoiceAloudTab.settings),
-            ),
-          ],
-        ),
-      )),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.iconName,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final String iconName;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isActive ? VAColors.blue600 : VAColors.gray400;
-    final stroke = isActive ? 2.5 : 2.0;
-
-    return PressEffect(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              duration: const Duration(milliseconds: 200),
-              scale: isActive ? 1.1 : 1.0,
-              child: LucideSvgIcon(
-                iconName,
-                size: 24,
-                color: color,
-                strokeWidth: stroke,
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          Positioned(
+            top: -60,
+            left: -40,
+            child: Container(
+              width: 256,
+              height: 256,
+              decoration: BoxDecoration(
+                color: VAColors.gold.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: color,
+          ),
+          Positioned(
+            bottom: 100,
+            right: -30,
+            child: Container(
+              width: 192,
+              height: 192,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A3080).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

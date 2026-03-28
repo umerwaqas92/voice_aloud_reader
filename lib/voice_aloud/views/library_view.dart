@@ -27,187 +27,172 @@ class LibraryView extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              VAColors.gradientNightStart,
-              VAColors.gradientNightMid,
-              VAColors.gradientNightEnd,
-            ],
+            colors: [VAColors.obsidian, VAColors.voidColor, VAColors.deep],
           ),
         ),
         child: Padding(
-        padding: const EdgeInsets.only(top: 32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Library',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      PressEffect(
-                        onTap: () => _showAddSheet(context, ref),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: VAColors.blue600,
-                            shape: BoxShape.circle,
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x4D2563EB),
-                                blurRadius: 18,
-                                offset: Offset(0, 10),
+          padding: const EdgeInsets.only(top: 16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'YOUR COLLECTION',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 2.5,
+                                color: VAColors.muted,
                               ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: LucideSvgIcon(
-                              'plus',
-                              size: 24,
-                              color: Colors.white,
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Library',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.8,
+                                color: VAColors.cream,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 128),
-                    children: [
-                      PressEffect(
-                        onTap:
-                            () =>
-                                ref
-                                    .read(appControllerProvider.notifier)
-                                    .setTab(VoiceAloudTab.settings),
-                        child: const _CloudSyncBanner(),
-                      ),
-                      const SizedBox(height: 12),
-                      PressEffect(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const RecentsView(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: VAColors.cardDark,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: VAColors.glassBorder),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text(
-                                'Open Recents',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
+                        PressEffect(
+                          onTap: () => _showAddSheet(context, ref),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: VAColors.gold,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: VAColors.gold.withValues(alpha: 0.3),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 10),
                                 ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.add,
+                                size: 24,
+                                color: VAColors.obsidian,
                               ),
-                              LucideSvgIcon(
-                                'arrow-right',
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 32),
-                      docs.when(
-                        data: (items) =>
-                            items.isEmpty
-                                ? const _EmptyStateCard()
-                                : const RecentPlaceholderNote(),
-                        loading: () => const _LoadingStateCard(),
-                        error: (e, _) => _ErrorStateCard(
-                          message: e.toString(),
-                          onRetry: () => ref.invalidate(
-                            documentsControllerProvider,
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 128),
+                      children: [
+                        _LuxurySyncBanner(),
+                        const SizedBox(height: 24),
+                        Text(
+                          'RECENTLY READ',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2.5,
+                            color: VAColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        docs.when(
+                          data:
+                              (items) =>
+                                  items.isEmpty
+                                      ? const _EmptyStateCard()
+                                      : const RecentPlaceholderNote(),
+                          loading: () => const _LoadingStateCard(),
+                          error:
+                              (e, _) => _ErrorStateCard(
+                                message: e.toString(),
+                                onRetry:
+                                    () => ref.invalidate(
+                                      documentsControllerProvider,
+                                    ),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
-class _CloudSyncBanner extends StatelessWidget {
-  const _CloudSyncBanner();
-
+class _LuxurySyncBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [VAColors.blue600, VAColors.indigo600],
+          colors: [
+            VAColors.gold.withValues(alpha: 0.06),
+            VAColors.gold.withValues(alpha: 0.12),
+          ],
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x332563EB),
-            blurRadius: 22,
-            offset: Offset(0, 12),
-          ),
-        ],
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'Local Library',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Tap to open Settings',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  'iCloud Sync Active',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFFBFDBFE),
+                    fontWeight: FontWeight.w600,
+                    color: VAColors.goldBright,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Synced across iPad & Mac',
+                  style: TextStyle(fontSize: 10, color: VAColors.muted),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: VAColors.gold.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                Icons.cloud_sync,
+                size: 16,
+                color: VAColors.goldBright,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -222,17 +207,27 @@ class _EmptyStateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x80F3F4F6)),
+        color: VAColors.panel,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.1)),
       ),
-      child: const Text(
-        'No documents yet.\nTap + to add one.',
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          height: 1.35,
-          color: VAColors.gray700,
-        ),
+      child: Column(
+        children: [
+          Icon(Icons.menu_book, size: 48, color: VAColors.muted),
+          const SizedBox(height: 12),
+          Text(
+            'No documents yet.',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: VAColors.cream,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tap + to add one.',
+            style: TextStyle(fontSize: 12, color: VAColors.muted),
+          ),
+        ],
       ),
     );
   }
@@ -246,9 +241,9 @@ class _LoadingStateCard extends StatelessWidget {
     return Container(
       height: 96,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x80F3F4F6)),
+        color: VAColors.panel,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: VAColors.gold.withValues(alpha: 0.1)),
       ),
     );
   }
@@ -265,23 +260,23 @@ class _ErrorStateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x80F3F4F6)),
+        color: VAColors.panel,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Failed to load documents',
-            style: TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red),
           ),
           const SizedBox(height: 8),
           Text(
             message,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: VAColors.gray600),
+            style: TextStyle(color: VAColors.muted),
           ),
           const SizedBox(height: 12),
           TextButton(onPressed: onRetry, child: const Text('Retry')),
@@ -294,6 +289,7 @@ class _ErrorStateCard extends StatelessWidget {
 Future<void> _showAddSheet(BuildContext context, WidgetRef ref) async {
   await showModalBottomSheet<void>(
     context: context,
+    backgroundColor: VAColors.panel,
     showDragHandle: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -307,8 +303,11 @@ Future<void> _showAddSheet(BuildContext context, WidgetRef ref) async {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const LucideSvgIcon('camera'),
-                title: const Text('Scan document'),
+                leading: Icon(Icons.camera_alt, color: VAColors.gold),
+                title: Text(
+                  'Scan document',
+                  style: TextStyle(color: VAColors.cream),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   ref
@@ -317,16 +316,22 @@ Future<void> _showAddSheet(BuildContext context, WidgetRef ref) async {
                 },
               ),
               ListTile(
-                leading: const LucideSvgIcon('file-text'),
-                title: const Text('Import .txt'),
+                leading: Icon(Icons.description, color: VAColors.gold),
+                title: Text(
+                  'Import .txt',
+                  style: TextStyle(color: VAColors.cream),
+                ),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await _importTxt(context, ref);
                 },
               ),
               ListTile(
-                leading: const LucideSvgIcon('type'),
-                title: const Text('Paste text'),
+                leading: Icon(Icons.paste, color: VAColors.gold),
+                title: Text(
+                  'Paste text',
+                  style: TextStyle(color: VAColors.cream),
+                ),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await _pasteText(context, ref);
@@ -352,9 +357,9 @@ Future<void> _importTxt(BuildContext context, WidgetRef ref) async {
   final bytes = file.bytes;
   if (bytes == null) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not read file')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not read file')));
     }
     return;
   }
@@ -362,15 +367,20 @@ Future<void> _importTxt(BuildContext context, WidgetRef ref) async {
   final content = utf8.decode(bytes, allowMalformed: true).trim();
   if (content.isEmpty) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File is empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('File is empty')));
     }
     return;
   }
 
-  final title = file.name.replaceAll(RegExp(r'\\.txt$', caseSensitive: false), '');
-  final doc = await ref.read(documentsControllerProvider.notifier).addFromText(
+  final title = file.name.replaceAll(
+    RegExp(r'\\.txt$', caseSensitive: false),
+    '',
+  );
+  final doc = await ref
+      .read(documentsControllerProvider.notifier)
+      .addFromText(
         title: title.isEmpty ? 'Imported text' : title,
         content: content,
         source: DocumentSource.importTxt,
@@ -386,7 +396,8 @@ Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
     context: context,
     builder: (context) {
       return AlertDialog(
-        title: const Text('Paste text'),
+        backgroundColor: VAColors.panel,
+        title: Text('Paste text', style: TextStyle(color: VAColors.cream)),
         content: SizedBox(
           width: 420,
           child: Column(
@@ -394,15 +405,23 @@ Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
             children: [
               TextField(
                 controller: titleController,
+                style: TextStyle(color: VAColors.cream),
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Title (optional)'),
+                decoration: InputDecoration(
+                  labelText: 'Title (optional)',
+                  labelStyle: TextStyle(color: VAColors.muted),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: textController,
+                style: TextStyle(color: VAColors.cream),
                 minLines: 6,
                 maxLines: 10,
-                decoration: const InputDecoration(labelText: 'Text'),
+                decoration: InputDecoration(
+                  labelText: 'Text',
+                  labelStyle: TextStyle(color: VAColors.muted),
+                ),
               ),
             ],
           ),
@@ -410,7 +429,7 @@ Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: VAColors.muted)),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -425,7 +444,9 @@ Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
   final content = textController.text.trim();
   if (content.isEmpty) return;
 
-  final doc = await ref.read(documentsControllerProvider.notifier).addFromText(
+  final doc = await ref
+      .read(documentsControllerProvider.notifier)
+      .addFromText(
         title: titleController.text,
         content: content,
         source: DocumentSource.paste,
