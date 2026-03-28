@@ -46,7 +46,7 @@
 		</data>
 		<key>Frameworks/App.framework/App</key>
 		<data>
-		cxV0goLapg0LvGwbMwPqLDDwSvM=
+		+XX+IL2XFiy8SITXcE0VSkUomaw=
 		</data>
 		<key>Frameworks/App.framework/Info.plist</key>
 		<data>
@@ -54,7 +54,7 @@
 		</data>
 		<key>Frameworks/App.framework/_CodeSignature/CodeResources</key>
 		<data>
-		SJ9z3rDUfQpeNpS4lcMGOJYy8tY=
+		COskN6B94gkycu7qoh9lR7Qos00=
 		</data>
 		<key>Frameworks/App.framework/flutter_assets/AssetManifest.bin</key>
 		<data>
@@ -186,7 +186,7 @@
 		</data>
 		<key>Frameworks/App.framework/flutter_assets/kernel_blob.bin</key>
 		<data>
-		G0XTkJgb8dIN7XepRLZH1Se9lq4=
+		H3dvQaR23hfkwOWYMeJQXywkpcI=
 		</data>
 		<key>Frameworks/App.framework/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf</key>
 		<data>
@@ -865,7 +865,7 @@
 		</data>
 		<key>Info.plist</key>
 		<data>
-		GPTyc8iEzXuYlGwAB5WjpEF4JY4=
+		KZC1h3OJ4NzALX9LD1cII+PexGI=
 		</data>
 		<key>LatinOCRResources.bundle/Info.plist</key>
 		<data>
@@ -909,11 +909,11 @@
 		</data>
 		<key>Runner.debug.dylib</key>
 		<data>
-		NSaO9ApLVGrtFqQQ7mAwnGMSrTQ=
+		97X7x1uTifrZPw6r5REHQGcSksU=
 		</data>
 		<key>__preview.dylib</key>
 		<data>
-		pQaYggBDpemFVurHbXwZsKeJoWg=
+		ugJVHOHAkkVZaZijTGipuXGGNMc=
 		</data>
 		<key>embedded.mobileprovision</key>
 		<data>
@@ -1004,7 +1004,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			AJ5MWYHzyDdY72UFockSyjdfT7Qletjd8g8EOxfzQJg=
+			ysndSPcNOpjRR2JYQ8INwPk5fajwZqZZR50uwymsSD4=
 			</data>
 		</dict>
 		<key>Frameworks/App.framework/Info.plist</key>
@@ -1018,7 +1018,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			l4W/IEtGiuy5DZ78hta7mjBNzNa9l/garuwlKB/k6TU=
+			98VTKxz6ecF7m38p9u84FMSP4k8k3BFqrQnFb/iWFME=
 			</data>
 		</dict>
 		<key>Frameworks/App.framework/flutter_assets/AssetManifest.bin</key>
@@ -1249,7 +1249,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Ca7PNvhgUqjz6yBG+f6yXzdZLZXUqXeAaRVhR4XwfyQ=
+			AEkKKw2ql/kYvRLLmZIoflvaSMeRAlc8QlyaTVQMqvw=
 			</data>
 		</dict>
 		<key>Frameworks/App.framework/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf</key>
@@ -2345,14 +2345,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			eadghTEzRA5iMynfHw+Olzq1M1L8b0Zl7EFw/W4Pu3U=
+			Zv3oekMndkmQdRoT0bvEe8k8l5ShAEbISGPS1McDu/o=
 			</data>
 		</dict>
 		<key>__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			T/sy4nX6KdKCYcW9Z4URj0iqMWwDqV02dJ1FEswOIIY=
+			ILmjhxEYnz83Ti2MC/IowDOLDC8YtE3JDgTdbz7cDtM=
 			</data>
 		</dict>
 		<key>embedded.mobileprovision</key>

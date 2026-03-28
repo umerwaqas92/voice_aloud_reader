@@ -890,7 +890,38 @@ class _LuxuryWaveform extends StatefulWidget {
   State<_LuxuryWaveform> createState() => _LuxuryWaveformState();
 }
 
-class _LuxuryWaveformState extends State<_LuxuryWaveform> {
+class _LuxuryWaveformState extends State<_LuxuryWaveform>
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    if (widget.isPlaying) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _LuxuryWaveform oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying && !oldWidget.isPlaying) {
+      _controller.repeat();
+    } else if (!widget.isPlaying && oldWidget.isPlaying) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final heights = [
@@ -916,16 +947,40 @@ class _LuxuryWaveformState extends State<_LuxuryWaveform> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(15, (index) {
-          final height = heights[index] * 32;
-          return AnimatedContainer(
-            duration: Duration(milliseconds: 300 + index * 50),
-            width: 3,
-            height: widget.isPlaying ? height : height * 0.5,
-            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-            decoration: BoxDecoration(
-              color: VAColors.gold.withValues(alpha: 0.15 + index * 0.03),
-              borderRadius: BorderRadius.circular(2),
-            ),
+          final baseHeight = heights[index] * 32;
+          return AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final progress = (_controller.value + index * 0.066) % 1.0;
+              final wave =
+                  widget.isPlaying
+                      ? baseHeight *
+                          (0.5 +
+                              0.5 *
+                                  (progress < 0.5
+                                      ? progress * 2
+                                      : 2 - progress * 2))
+                      : baseHeight * 0.5;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 100),
+                width: 3,
+                height: wave,
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                decoration: BoxDecoration(
+                  color: VAColors.gold.withValues(alpha: 0.15 + index * 0.03),
+                  borderRadius: BorderRadius.circular(2),
+                  boxShadow:
+                      widget.isPlaying
+                          ? [
+                            BoxShadow(
+                              color: VAColors.gold.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                            ),
+                          ]
+                          : null,
+                ),
+              );
+            },
           );
         }),
       ),
@@ -1034,36 +1089,106 @@ class _SkipButton extends StatelessWidget {
   }
 }
 
-class _LuxuryPlayButton extends StatelessWidget {
+class _LuxuryPlayButton extends StatefulWidget {
   const _LuxuryPlayButton({required this.isPlaying, required this.onTap});
 
   final bool isPlaying;
   final VoidCallback onTap;
 
   @override
+  State<_LuxuryPlayButton> createState() => _LuxuryPlayButtonState();
+}
+
+class _LuxuryPlayButtonState extends State<_LuxuryPlayButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 0.5).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    if (widget.isPlaying) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _LuxuryPlayButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying && !oldWidget.isPlaying) {
+      _pulseController.repeat(reverse: true);
+    } else if (!widget.isPlaying && oldWidget.isPlaying) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 68,
-        height: 68,
-        decoration: BoxDecoration(
-          color: VAColors.gold,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: VAColors.gold.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _pulseController,
+        builder: (context, child) {
+          return Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: VAColors.gold,
+              shape: BoxShape.circle,
+              boxShadow:
+                  widget.isPlaying
+                      ? [
+                        BoxShadow(
+                          color: VAColors.gold.withValues(
+                            alpha: _pulseAnimation.value,
+                          ),
+                          blurRadius: 20 + (_pulseAnimation.value * 10),
+                          spreadRadius: _pulseAnimation.value * 5,
+                        ),
+                      ]
+                      : [
+                        BoxShadow(
+                          color: VAColors.gold.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
             ),
-          ],
-        ),
-        child: Center(
-          child:
-              isPlaying
-                  ? Icon(Icons.pause, size: 26, color: VAColors.obsidian)
-                  : Icon(Icons.play_arrow, size: 26, color: VAColors.obsidian),
-        ),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child:
+                    widget.isPlaying
+                        ? Icon(
+                          Icons.pause,
+                          key: const ValueKey('pause'),
+                          size: 26,
+                          color: VAColors.obsidian,
+                        )
+                        : Icon(
+                          Icons.play_arrow,
+                          key: const ValueKey('play'),
+                          size: 26,
+                          color: VAColors.obsidian,
+                        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
