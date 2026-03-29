@@ -118,6 +118,23 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     await _tts.setVoiceByName(settings.voiceName);
   }
 
+  /// Re-applies the latest settings to the active playback (if any) and keeps
+  /// the listener at the current offset.
+  Future<void> reapplySettingsIfPlaying() async {
+    if (!state.isPlaying || state.documentId == null) return;
+    final doc =
+        ref
+            .read(documentsControllerProvider.notifier)
+            .getById(state.documentId!);
+    if (doc == null) return;
+
+    final settings =
+        ref.read(settingsControllerProvider).valueOrNull ??
+        VoiceAloudSettings.defaults;
+    await _applySettings(settings);
+    await play(doc, startOffset: state.currentOffset);
+  }
+
   void _onProgress(String text, int start, int end, String word) {
     if (state.documentId == null) return;
     final absStart = state.baseOffset + start;

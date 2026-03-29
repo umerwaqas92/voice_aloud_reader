@@ -11,6 +11,7 @@ import '../voice_aloud_tab.dart';
 import '../widgets/animated_page_entrance.dart';
 import '../widgets/blur_panel.dart';
 import '../widgets/lucide_svg_icon.dart';
+import '../widgets/voice_picker_sheet.dart';
 
 class ReadView extends ConsumerWidget {
   const ReadView({
@@ -109,6 +110,15 @@ class ReadView extends ConsumerWidget {
                                       ? VAColors.gold.withValues(alpha: 0.15)
                                       : Colors.transparent,
                               onTap: onToggleFontMenu,
+                            ),
+                            const SizedBox(width: 4),
+                            _LuxuryCircleButton(
+                              icon: LucideSvgIcon(
+                                'mic',
+                                size: 20,
+                                color: mutedColor,
+                              ),
+                              onTap: () => showVoicePickerSheet(context, ref),
                             ),
                             const SizedBox(width: 4),
                             _LuxuryCircleButton(

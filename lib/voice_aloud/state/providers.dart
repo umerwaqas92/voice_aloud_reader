@@ -5,4 +5,4 @@ export 'documents_controller.dart';
 export 'playback_controller.dart';
 export 'playback_state.dart';
 export 'settings_controller.dart';
-
+export 'voice_providers.dart';

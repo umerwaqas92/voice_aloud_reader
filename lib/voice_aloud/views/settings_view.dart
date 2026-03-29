@@ -9,6 +9,7 @@ import '../va_tokens.dart';
 import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
 import '../widgets/press_effect.dart';
+import '../widgets/voice_picker_sheet.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({super.key});
@@ -128,8 +129,7 @@ class SettingsView extends ConsumerWidget {
                                   ? 'Aria (Enhanced)'
                                   : settings.voiceName,
                           subtitleColor: VAColors.gold,
-                          onTap:
-                              () => _pickVoice(context, ref, settings.language),
+                          onTap: () => showVoicePickerSheet(context, ref),
                         ),
                       ],
                     ),
@@ -607,80 +607,6 @@ Future<void> _pickLanguage(
                       await ref
                           .read(settingsControllerProvider.notifier)
                           .setVoiceName('');
-                      if (context.mounted) Navigator.of(context).pop();
-                    },
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      );
-    },
-  );
-}
-
-Future<void> _pickVoice(
-  BuildContext context,
-  WidgetRef ref,
-  String language,
-) async {
-  final service = ref.read(ttsServiceProvider);
-
-  await showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: VAColors.panel,
-    showDragHandle: true,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) {
-      return SafeArea(
-        top: false,
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: service.getVoices(),
-            builder: (context, snapshot) {
-              final voices = snapshot.data ?? const <Map<String, dynamic>>[];
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final filtered =
-                  language.trim().isEmpty
-                      ? voices
-                      : voices.where((v) {
-                        final locale =
-                            (v['locale'] ?? v['Locale'] ?? '').toString();
-                        return locale.startsWith(language);
-                      }).toList();
-
-              if (filtered.isEmpty) {
-                return const Center(child: Text('No voices found'));
-              }
-
-              String nameOf(Map<String, dynamic> v) =>
-                  (v['name'] ?? v['Name'] ?? '').toString().trim();
-
-              final names =
-                  filtered
-                      .map(nameOf)
-                      .where((n) => n.isNotEmpty)
-                      .toSet()
-                      .toList()
-                    ..sort();
-
-              return ListView.builder(
-                itemCount: names.length,
-                itemBuilder: (context, index) {
-                  final name = names[index];
-                  return ListTile(
-                    title: Text(name, style: TextStyle(color: VAColors.cream)),
-                    onTap: () async {
-                      await ref
-                          .read(settingsControllerProvider.notifier)
-                          .setVoiceName(name);
                       if (context.mounted) Navigator.of(context).pop();
                     },
                   );

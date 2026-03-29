@@ -46,7 +46,7 @@
 		</data>
 		<key>Frameworks/App.framework/App</key>
 		<data>
-		+XX+IL2XFiy8SITXcE0VSkUomaw=
+		5cVMGpSvfWTk12dwT8ZZp6EbUiI=
 		</data>
 		<key>Frameworks/App.framework/Info.plist</key>
 		<data>
@@ -865,7 +865,7 @@
 		</data>
 		<key>Info.plist</key>
 		<data>
-		KZC1h3OJ4NzALX9LD1cII+PexGI=
+		ZY4axLnC97AE2mZorqgtdaBJ4wg=
 		</data>
 		<key>LatinOCRResources.bundle/Info.plist</key>
 		<data>
@@ -909,11 +909,11 @@
 		</data>
 		<key>Runner.debug.dylib</key>
 		<data>
-		97X7x1uTifrZPw6r5REHQGcSksU=
+		mLtq/+a25PqWCLw9yNJEb0Le2dk=
 		</data>
 		<key>__preview.dylib</key>
 		<data>
-		ugJVHOHAkkVZaZijTGipuXGGNMc=
+		TVt5x25Arc3VXvzDsqC+V0a0muw=
 		</data>
 		<key>embedded.mobileprovision</key>
 		<data>
@@ -1004,7 +1004,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			ysndSPcNOpjRR2JYQ8INwPk5fajwZqZZR50uwymsSD4=
+			r08znS3LnxrobKeKwC1FyNCaDV8Q2eFbunp6JnFGtwU=
 			</data>
 		</dict>
 		<key>Frameworks/App.framework/Info.plist</key>
@@ -2345,14 +2345,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Zv3oekMndkmQdRoT0bvEe8k8l5ShAEbISGPS1McDu/o=
+			fzSEQlGopLbJAhYiElDzlMt/Gf+KRghdQZ8PPdVWbHs=
 			</data>
 		</dict>
 		<key>__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			ILmjhxEYnz83Ti2MC/IowDOLDC8YtE3JDgTdbz7cDtM=
+			HYsldD9YO85Th3zHdmUl/tbGeBN7uncfPMl36AnOAPQ=
 			</data>
 		</dict>
 		<key>embedded.mobileprovision</key>
