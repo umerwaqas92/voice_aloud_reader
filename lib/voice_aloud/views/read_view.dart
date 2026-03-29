@@ -114,7 +114,7 @@ class ReadView extends ConsumerWidget {
                             const SizedBox(width: 4),
                             _LuxuryCircleButton(
                               icon: LucideSvgIcon(
-                                'waves',
+                                'volume-2',
                                 size: 20,
                                 color: mutedColor,
                               ),
@@ -251,6 +251,8 @@ class ReadView extends ConsumerWidget {
                   isPlaying: isPlaying,
                   currentOffset: offset,
                   speechRate: settings.speechRate,
+                  voiceName: settings.voiceName,
+                  onOpenVoicePicker: () => showVoicePickerSheet(context, ref),
                   onTogglePlaying: onTogglePlaying,
                   onSeek:
                       (fraction) async => ref
@@ -766,6 +768,8 @@ class _LuxuryBottomPlayer extends StatelessWidget {
     required this.isPlaying,
     required this.currentOffset,
     required this.speechRate,
+    required this.voiceName,
+    required this.onOpenVoicePicker,
     required this.onTogglePlaying,
     required this.onSkip,
     required this.onSeek,
@@ -775,6 +779,8 @@ class _LuxuryBottomPlayer extends StatelessWidget {
   final bool isPlaying;
   final int currentOffset;
   final double speechRate;
+  final String voiceName;
+  final VoidCallback onOpenVoicePicker;
   final VoidCallback onTogglePlaying;
   final ValueChanged<int> onSkip;
   final ValueChanged<double> onSeek;
@@ -880,7 +886,10 @@ class _LuxuryBottomPlayer extends StatelessWidget {
                     onTap: () => onSkip(15),
                   ),
                   const SizedBox(width: 16),
-                  _VoiceButton(),
+                  _VoiceButton(
+                    voiceName: voiceName,
+                    onTap: onOpenVoicePicker,
+                  ),
                 ],
               ),
             ],
@@ -1032,29 +1041,53 @@ class _SpeedButton extends StatelessWidget {
 }
 
 class _VoiceButton extends StatelessWidget {
+  const _VoiceButton({required this.voiceName, required this.onTap});
+
+  final String voiceName;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: VAColors.gold.withValues(alpha: 0.06),
+    final label = voiceName.trim().isEmpty ? 'Voice' : voiceName.trim();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.mic, size: 13, color: VAColors.gold),
-          const SizedBox(width: 4),
-          Text(
-            'Aria',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: VAColors.gold,
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: VAColors.gold.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LucideSvgIcon(
+                'volume-2',
+                size: 14,
+                color: VAColors.gold,
+                strokeWidth: 2,
+              ),
+              const SizedBox(width: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 88),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: VAColors.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

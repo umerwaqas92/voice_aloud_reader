@@ -6,7 +6,7 @@ abstract class TtsService {
   Future<void> setPitch(double pitch);
   Future<void> setVolume(double volume);
   Future<void> setLanguage(String language);
-  Future<void> setVoiceByName(String voiceName);
+  Future<void> setVoiceByName(String voiceName, {String voiceLocale = ''});
 
   Future<List<String>> getLanguages();
   Future<List<Map<String, dynamic>>> getVoices();

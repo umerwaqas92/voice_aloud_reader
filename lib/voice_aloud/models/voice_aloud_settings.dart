@@ -12,6 +12,7 @@ class VoiceAloudSettings {
     required this.keepScreenOn,
     required this.language,
     required this.voiceName,
+    required this.voiceLocale,
     required this.onboardingCompleted,
   });
 
@@ -25,6 +26,8 @@ class VoiceAloudSettings {
   final bool keepScreenOn;
   final String language;
   final String voiceName;
+  /// BCP 47 locale from the system voice list; disambiguates duplicate names.
+  final String voiceLocale;
   final bool onboardingCompleted;
 
   static const defaults = VoiceAloudSettings(
@@ -38,6 +41,7 @@ class VoiceAloudSettings {
     keepScreenOn: true,
     language: '',
     voiceName: '',
+    voiceLocale: '',
     onboardingCompleted: false,
   );
 
@@ -52,6 +56,7 @@ class VoiceAloudSettings {
     bool? keepScreenOn,
     String? language,
     String? voiceName,
+    String? voiceLocale,
     bool? onboardingCompleted,
   }) {
     return VoiceAloudSettings(
@@ -65,6 +70,7 @@ class VoiceAloudSettings {
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       language: language ?? this.language,
       voiceName: voiceName ?? this.voiceName,
+      voiceLocale: voiceLocale ?? this.voiceLocale,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }
@@ -80,6 +86,7 @@ class VoiceAloudSettings {
     'keepScreenOn': keepScreenOn,
     'language': language,
     'voiceName': voiceName,
+    'voiceLocale': voiceLocale,
     'onboardingCompleted': onboardingCompleted,
   };
 
@@ -118,6 +125,7 @@ class VoiceAloudSettings {
       keepScreenOn: readBool('keepScreenOn', defaults.keepScreenOn),
       language: (json['language'] ?? '').toString(),
       voiceName: (json['voiceName'] ?? '').toString(),
+      voiceLocale: (json['voiceLocale'] ?? '').toString(),
       onboardingCompleted: readBool(
         'onboardingCompleted',
         defaults.onboardingCompleted,

@@ -127,7 +127,10 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     await _tts.setPitch(settings.pitch);
     await _tts.setVolume(settings.volume);
     await _tts.setLanguage(settings.language);
-    await _tts.setVoiceByName(settings.voiceName);
+    await _tts.setVoiceByName(
+      settings.voiceName,
+      voiceLocale: settings.voiceLocale,
+    );
   }
 
   /// Re-applies the latest settings to the active playback (if any) and keeps

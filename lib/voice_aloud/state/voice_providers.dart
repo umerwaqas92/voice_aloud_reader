@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/tts_service.dart';
 import 'dependencies.dart';
 
 /// Caches the available TTS voices for the session so the picker opens instantly
@@ -11,6 +10,5 @@ final availableVoicesProvider =
       return tts.getVoices();
     });
 
-/// Tracks which voice is currently being applied to show inline feedback and
-/// prevent duplicate taps.
-final applyingVoiceNameProvider = StateProvider<String?>((ref) => null);
+/// Tracks `"name|locale"` while applying a voice (inline spinner, no double-tap).
+final applyingVoiceKeyProvider = StateProvider<String?>((ref) => null);

@@ -23,7 +23,7 @@ class FakeTtsService implements TtsService {
   Future<void> setSpeechRate(double rate) async {}
 
   @override
-  Future<void> setVoiceByName(String voiceName) async {}
+  Future<void> setVoiceByName(String voiceName, {String voiceLocale = ''}) async {}
 
   @override
   Future<void> setVolume(double volume) async {}

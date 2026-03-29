@@ -61,20 +61,38 @@ class FlutterTtsService implements TtsService {
   }
 
   @override
-  Future<void> setVoiceByName(String voiceName) async {
+  Future<void> setVoiceByName(String voiceName, {String voiceLocale = ''}) async {
     if (voiceName.trim().isEmpty) return;
     final voices = await getVoices();
-    final match = voices.firstWhere(
-      (v) => (v['name'] ?? v['Name'] ?? '').toString() == voiceName,
-      orElse: () => const {},
-    );
-    if (match.isEmpty) return;
+    final trimmedLocale = voiceLocale.trim();
 
-    final name = (match['name'] ?? match['Name'] ?? '').toString();
-    final locale = (match['locale'] ?? match['Locale'] ?? '').toString();
+    Map<String, dynamic>? pick;
+    if (trimmedLocale.isNotEmpty) {
+      for (final v in voices) {
+        final n = (v['name'] ?? v['Name'] ?? '').toString();
+        final loc = (v['locale'] ?? v['Locale'] ?? '').toString();
+        if (n == voiceName && (loc == trimmedLocale || loc.startsWith(trimmedLocale))) {
+          pick = Map<String, dynamic>.from(v);
+          break;
+        }
+      }
+    }
+
+    if (pick == null) {
+      final sameName = voices
+          .where((v) => (v['name'] ?? v['Name'] ?? '').toString() == voiceName)
+          .toList();
+      if (sameName.isEmpty) return;
+      pick = Map<String, dynamic>.from(sameName.first);
+    }
+
+    final name = (pick['name'] ?? pick['Name'] ?? '').toString();
+    final locale = (pick['locale'] ?? pick['Locale'] ?? '').toString();
     if (name.isEmpty) return;
     final payload =
-        locale.isNotEmpty ? <String, String>{'name': name, 'locale': locale} : <String, String>{'name': name};
+        locale.isNotEmpty
+            ? <String, String>{'name': name, 'locale': locale}
+            : <String, String>{'name': name};
     await _tts.setVoice(payload);
   }
 

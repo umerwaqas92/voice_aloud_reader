@@ -60,8 +60,13 @@ class SettingsController extends AsyncNotifier<VoiceAloudSettings> {
     await _update((s) => s.copyWith(language: language));
   }
 
-  Future<void> setVoiceName(String voiceName) async {
-    await _update((s) => s.copyWith(voiceName: voiceName));
+  Future<void> setVoiceName(String voiceName, {String voiceLocale = ''}) async {
+    await _update(
+      (s) => s.copyWith(
+        voiceName: voiceName,
+        voiceLocale: voiceName.trim().isEmpty ? '' : voiceLocale,
+      ),
+    );
   }
 
   Future<void> save(VoiceAloudSettings settings) async {

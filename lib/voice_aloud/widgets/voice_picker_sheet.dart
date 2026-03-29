@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/voice_aloud_settings.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
+import '../widgets/lucide_svg_icon.dart';
 
 Future<void> showVoicePickerSheet(BuildContext context, WidgetRef ref) async {
   final settings =
@@ -21,6 +22,30 @@ Future<void> showVoicePickerSheet(BuildContext context, WidgetRef ref) async {
   );
 }
 
+String _nameOf(Map<String, dynamic> v) =>
+    (v['name'] ?? v['Name'] ?? '').toString().trim();
+
+String _localeOf(Map<String, dynamic> v) =>
+    (v['locale'] ?? v['Locale'] ?? '').toString();
+
+String _voiceKey(Map<String, dynamic> v) => '${_nameOf(v)}|${_localeOf(v)}';
+
+bool _rowSelected(
+  Map<String, dynamic> v,
+  List<Map<String, dynamic>> filtered,
+  VoiceAloudSettings settings,
+) {
+  final n = _nameOf(v);
+  final loc = _localeOf(v);
+  if (n != settings.voiceName) return false;
+  if (settings.voiceLocale.isNotEmpty) {
+    return loc == settings.voiceLocale;
+  }
+  final sameNameCount =
+      filtered.where((x) => _nameOf(x) == n).length;
+  return sameNameCount == 1;
+}
+
 class VoicePickerSheet extends ConsumerWidget {
   const VoicePickerSheet({super.key, required this.language});
 
@@ -32,7 +57,7 @@ class VoicePickerSheet extends ConsumerWidget {
     final settings =
         ref.watch(settingsControllerProvider).valueOrNull ??
         VoiceAloudSettings.defaults;
-    final applying = ref.watch(applyingVoiceNameProvider);
+    final applying = ref.watch(applyingVoiceKeyProvider);
 
     return SafeArea(
       top: false,
@@ -42,10 +67,9 @@ class VoicePickerSheet extends ConsumerWidget {
           data: (voices) {
             final filtered =
                 language.trim().isEmpty
-                    ? voices
+                    ? List<Map<String, dynamic>>.from(voices)
                     : voices.where((v) {
-                      final locale =
-                          (v['locale'] ?? v['Locale'] ?? '').toString();
+                      final locale = _localeOf(v);
                       return locale.startsWith(language);
                     }).toList();
 
@@ -53,61 +77,78 @@ class VoicePickerSheet extends ConsumerWidget {
               return const Center(child: Text('No voices found'));
             }
 
-            String nameOf(Map<String, dynamic> v) =>
-                (v['name'] ?? v['Name'] ?? '').toString().trim();
-
-            final names =
-                filtered
-                    .map(nameOf)
-                    .where((n) => n.isNotEmpty)
-                    .toSet()
-                    .toList()
-                  ..sort();
+            filtered.sort((a, b) {
+              final byName = _nameOf(a).compareTo(_nameOf(b));
+              if (byName != 0) return byName;
+              return _localeOf(a).compareTo(_localeOf(b));
+            });
 
             return ListView.builder(
-              itemCount: names.length,
+              itemCount: filtered.length,
               itemBuilder: (context, index) {
-                final name = names[index];
-                final selected = name == settings.voiceName;
-                final isApplying = applying == name;
+                final v = filtered[index];
+                final name = _nameOf(v);
+                final locale = _localeOf(v);
+                final key = _voiceKey(v);
+                if (name.isEmpty) return const SizedBox.shrink();
+
+                final selected = _rowSelected(v, filtered, settings);
+                final isApplying = applying == key;
+
                 return ListTile(
                   title: Text(name, style: TextStyle(color: VAColors.cream)),
-                  trailing:
-                      isApplying
-                          ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(VAColors.gold),
-                            ),
-                            const SizedBox(width: 8),
-                            LucideSvgIcon(
-                              'waves',
-                              size: 18,
-                              color: VAColors.gold,
+                  subtitle:
+                      locale.isNotEmpty
+                          ? Text(
+                            locale,
+                            style: TextStyle(
+                              color: VAColors.muted,
+                              fontSize: 12,
                             ),
                           )
-                        : selected
-                            ? Icon(Icons.check, color: VAColors.gold)
-                            : null,
+                          : null,
+                  trailing:
+                      isApplying
+                          ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    VAColors.gold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              LucideSvgIcon(
+                                'volume-2',
+                                size: 18,
+                                color: VAColors.gold,
+                              ),
+                            ],
+                          )
+                          : selected
+                          ? Icon(Icons.check, color: VAColors.gold)
+                          : null,
                   onTap: () async {
-                    if (ref.read(applyingVoiceNameProvider.notifier).state !=
+                    if (ref.read(applyingVoiceKeyProvider.notifier).state !=
                         null) {
                       return;
                     }
-                    ref.read(applyingVoiceNameProvider.notifier).state = name;
+                    ref.read(applyingVoiceKeyProvider.notifier).state = key;
                     try {
                       await ref
                           .read(settingsControllerProvider.notifier)
-                          .setVoiceName(name);
+                          .setVoiceName(name, voiceLocale: locale);
                       await ref
                           .read(playbackControllerProvider.notifier)
                           .applyVoiceAndResume();
                       if (context.mounted) Navigator.of(context).pop();
                     } finally {
-                      ref.read(applyingVoiceNameProvider.notifier).state = null;
+                      ref.read(applyingVoiceKeyProvider.notifier).state = null;
                     }
                   },
                 );
