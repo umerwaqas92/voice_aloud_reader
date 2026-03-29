@@ -114,7 +114,7 @@ class ReadView extends ConsumerWidget {
                             const SizedBox(width: 4),
                             _LuxuryCircleButton(
                               icon: LucideSvgIcon(
-                                'mic',
+                                'waves',
                                 size: 20,
                                 color: mutedColor,
                               ),

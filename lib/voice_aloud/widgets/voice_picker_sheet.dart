@@ -32,6 +32,7 @@ class VoicePickerSheet extends ConsumerWidget {
     final settings =
         ref.watch(settingsControllerProvider).valueOrNull ??
         VoiceAloudSettings.defaults;
+    final applying = ref.watch(applyingVoiceNameProvider);
 
     return SafeArea(
       top: false,
@@ -68,18 +69,46 @@ class VoicePickerSheet extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final name = names[index];
                 final selected = name == settings.voiceName;
+                final isApplying = applying == name;
                 return ListTile(
                   title: Text(name, style: TextStyle(color: VAColors.cream)),
                   trailing:
-                      selected ? Icon(Icons.check, color: VAColors.gold) : null,
+                      isApplying
+                          ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(VAColors.gold),
+                            ),
+                            const SizedBox(width: 8),
+                            LucideSvgIcon(
+                              'waves',
+                              size: 18,
+                              color: VAColors.gold,
+                            ),
+                          )
+                        : selected
+                            ? Icon(Icons.check, color: VAColors.gold)
+                            : null,
                   onTap: () async {
-                    await ref
-                        .read(settingsControllerProvider.notifier)
-                        .setVoiceName(name);
-                    await ref
-                        .read(playbackControllerProvider.notifier)
-                        .reapplySettingsIfPlaying();
-                    if (context.mounted) Navigator.of(context).pop();
+                    if (ref.read(applyingVoiceNameProvider.notifier).state !=
+                        null) {
+                      return;
+                    }
+                    ref.read(applyingVoiceNameProvider.notifier).state = name;
+                    try {
+                      await ref
+                          .read(settingsControllerProvider.notifier)
+                          .setVoiceName(name);
+                      await ref
+                          .read(playbackControllerProvider.notifier)
+                          .applyVoiceAndResume();
+                      if (context.mounted) Navigator.of(context).pop();
+                    } finally {
+                      ref.read(applyingVoiceNameProvider.notifier).state = null;
+                    }
                   },
                 );
               },

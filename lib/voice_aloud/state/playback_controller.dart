@@ -58,19 +58,31 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     await play(doc, startOffset: _effectiveOffsetFor(doc));
   }
 
-  Future<void> play(Document doc, {required int startOffset}) async {
+  Future<void> play(
+    Document doc, {
+    required int startOffset,
+    bool applySettings = true,
+    bool stopBefore = true,
+  }) async {
     final bounded = startOffset.clamp(0, doc.content.length);
     if (doc.content.isEmpty) {
       state = state.copyWith(lastError: 'Document is empty');
       return;
     }
 
-    await _tts.stop();
+    _debouncedSeek?.cancel();
+    if (stopBefore) {
+      await _tts.stop();
+    }
 
     final settings =
         ref.read(settingsControllerProvider).valueOrNull ??
         VoiceAloudSettings.defaults;
-    await _applySettings(settings);
+    if (applySettings) {
+      await _applySettings(settings);
+      // Small settle to avoid audible glitch when switching voices quickly.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
 
     final text = doc.content.substring(bounded);
     _lastPersistedOffset = bounded;
@@ -182,5 +194,36 @@ class PlaybackController extends StateNotifier<PlaybackState> {
   void _setScreenOn(bool enabled) {
     if (isInTest) return;
     unawaited(WakelockPlus.toggle(enable: enabled));
+  }
+
+  /// Applies latest settings (including voice) and, if currently playing,
+  /// restarts from the same offset with minimal delay.
+  Future<void> applyVoiceAndResume() async {
+    final settings =
+        ref.read(settingsControllerProvider).valueOrNull ??
+        VoiceAloudSettings.defaults;
+
+    final isPlayingNow = state.isPlaying && state.documentId != null;
+    final docId = state.documentId;
+    final currentOffset = state.currentOffset;
+
+    _debouncedSeek?.cancel();
+    await _tts.stop();
+    await _applySettings(settings);
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+
+    if (!isPlayingNow || docId == null) return;
+    final doc =
+        ref
+            .read(documentsControllerProvider.notifier)
+            .getById(docId);
+    if (doc == null) return;
+
+    await play(
+      doc,
+      startOffset: currentOffset,
+      applySettings: false,
+      stopBefore: false,
+    );
   }
 }

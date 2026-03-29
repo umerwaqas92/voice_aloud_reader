@@ -10,3 +10,7 @@ final availableVoicesProvider =
       final tts = ref.watch(ttsServiceProvider);
       return tts.getVoices();
     });
+
+/// Tracks which voice is currently being applied to show inline feedback and
+/// prevent duplicate taps.
+final applyingVoiceNameProvider = StateProvider<String?>((ref) => null);
