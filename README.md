@@ -1,4 +1,4 @@
-# voxly
+# VoiceAloud Reader
 
 A new Flutter project.
 

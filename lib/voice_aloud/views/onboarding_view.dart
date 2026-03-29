@@ -19,7 +19,7 @@ class _OnboardingViewState extends ConsumerState<OnboardingView> {
 
   final List<_OnboardingPageData> _pages = [
     const _OnboardingPageData(
-      title: 'Welcome to Voxly',
+      title: 'Welcome to VoiceAloud Reader',
       description: 'The easiest way to listen to your favorite books and articles. Turn any text into natural-sounding speech.',
       iconName: 'book',
       color: VAColors.blue600,

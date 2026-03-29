@@ -1,6 +1,6 @@
 {
-    "name": "voxly",
-    "short_name": "voxly",
+    "name": "VoiceAloud Reader",
+    "short_name": "VoiceAloud",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

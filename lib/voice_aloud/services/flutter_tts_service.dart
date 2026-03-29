@@ -65,13 +65,19 @@ class FlutterTtsService implements TtsService {
     if (voiceName.trim().isEmpty) return;
     final voices = await getVoices();
     final trimmedLocale = voiceLocale.trim();
+    String normalizeLocale(String value) =>
+        value.trim().replaceAll('_', '-').toLowerCase();
+    final normalizedLocale = normalizeLocale(trimmedLocale);
 
     Map<String, dynamic>? pick;
-    if (trimmedLocale.isNotEmpty) {
+    if (normalizedLocale.isNotEmpty) {
       for (final v in voices) {
         final n = (v['name'] ?? v['Name'] ?? '').toString();
         final loc = (v['locale'] ?? v['Locale'] ?? '').toString();
-        if (n == voiceName && (loc == trimmedLocale || loc.startsWith(trimmedLocale))) {
+        final normalizedLoc = normalizeLocale(loc);
+        if (n == voiceName &&
+            (normalizedLoc == normalizedLocale ||
+                normalizedLoc.startsWith(normalizedLocale))) {
           pick = Map<String, dynamic>.from(v);
           break;
         }

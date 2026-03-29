@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 
-import 'package:voxly/voice_aloud/voice_aloud_mockup_page.dart';
-import 'package:voxly/voice_aloud/voice_aloud_tab.dart';
+import 'package:voice_aloud_reader/voice_aloud/voice_aloud_mockup_page.dart';
+import 'package:voice_aloud_reader/voice_aloud/voice_aloud_tab.dart';
 
 const _phone400x800 = Device(
   name: 'phone_400x800',

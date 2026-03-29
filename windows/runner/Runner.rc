@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.alnomily.autoagent" "\0"
-            VALUE "FileDescription", "voxly" "\0"
+            VALUE "FileDescription", "VoiceAloud Reader" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "voxly" "\0"
+            VALUE "InternalName", "voice_aloud_reader" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.alnomily.autoagent. All rights reserved." "\0"
-            VALUE "OriginalFilename", "voxly.exe" "\0"
-            VALUE "ProductName", "voxly" "\0"
+            VALUE "OriginalFilename", "voice_aloud_reader.exe" "\0"
+            VALUE "ProductName", "VoiceAloud Reader" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

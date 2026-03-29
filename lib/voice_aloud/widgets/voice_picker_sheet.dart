@@ -30,6 +30,20 @@ String _localeOf(Map<String, dynamic> v) =>
 
 String _voiceKey(Map<String, dynamic> v) => '${_nameOf(v)}|${_localeOf(v)}';
 
+String _genderOf(Map<String, dynamic> v) =>
+    (v['gender'] ?? v['Gender'] ?? '').toString().toLowerCase();
+
+IconData _genderIcon(Map<String, dynamic> v) {
+  final g = _genderOf(v);
+  if (g.contains('female') || g == 'f' || g == 'woman') {
+    return Icons.female;
+  }
+  if (g.contains('male') || g == 'm' || g == 'man') {
+    return Icons.male;
+  }
+  return Icons.person_outline;
+}
+
 bool _rowSelected(
   Map<String, dynamic> v,
   List<Map<String, dynamic>> filtered,
@@ -41,8 +55,7 @@ bool _rowSelected(
   if (settings.voiceLocale.isNotEmpty) {
     return loc == settings.voiceLocale;
   }
-  final sameNameCount =
-      filtered.where((x) => _nameOf(x) == n).length;
+  final sameNameCount = filtered.where((x) => _nameOf(x) == n).length;
   return sameNameCount == 1;
 }
 
@@ -96,6 +109,7 @@ class VoicePickerSheet extends ConsumerWidget {
                 final isApplying = applying == key;
 
                 return ListTile(
+                  leading: Icon(_genderIcon(v), color: VAColors.muted),
                   title: Text(name, style: TextStyle(color: VAColors.cream)),
                   subtitle:
                       locale.isNotEmpty
@@ -134,21 +148,22 @@ class VoicePickerSheet extends ConsumerWidget {
                           ? Icon(Icons.check, color: VAColors.gold)
                           : null,
                   onTap: () async {
-                    if (ref.read(applyingVoiceKeyProvider.notifier).state !=
-                        null) {
+                    if (ref.read(applyingSettingsProvider)) {
                       return;
                     }
                     ref.read(applyingVoiceKeyProvider.notifier).state = key;
+                    ref.read(applyingSettingsProvider.notifier).state = true;
                     try {
                       await ref
                           .read(settingsControllerProvider.notifier)
                           .setVoiceName(name, voiceLocale: locale);
                       await ref
                           .read(playbackControllerProvider.notifier)
-                          .applyVoiceAndResume();
+                          .applySettingsAndResume();
                       if (context.mounted) Navigator.of(context).pop();
                     } finally {
                       ref.read(applyingVoiceKeyProvider.notifier).state = null;
+                      ref.read(applyingSettingsProvider.notifier).state = false;
                     }
                   },
                 );

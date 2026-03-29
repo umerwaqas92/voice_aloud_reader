@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/voice_aloud_settings.dart';
 import '../state/providers.dart';
+import '../utils/tts_language_display.dart';
 import '../va_tokens.dart';
 import '../widgets/animated_page_entrance.dart';
 import '../widgets/lucide_svg_icon.dart';
@@ -34,7 +35,7 @@ class SettingsView extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'PREFERENCES',
+                        'SETTINGS',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -44,7 +45,7 @@ class SettingsView extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Settings',
+                        'Preferences',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w500,
@@ -56,7 +57,7 @@ class SettingsView extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   Text(
-                    'VOICE & PLAYBACK',
+                    'VOICE',
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
@@ -70,26 +71,38 @@ class SettingsView extends ConsumerWidget {
                       children: [
                         _ReadingSpeed(
                           speed: settings.speechRate,
-                          onChanged:
-                              (value) => ref
-                                  .read(settingsControllerProvider.notifier)
-                                  .setSpeechRate(value),
+                          onChanged: (value) async {
+                            await ref
+                                .read(settingsControllerProvider.notifier)
+                                .setSpeechRate(value);
+                            await ref
+                                .read(playbackControllerProvider.notifier)
+                                .applySettingsAndResume();
+                          },
                         ),
                         const _LuxuryDivider(),
                         _PitchSlider(
                           value: settings.pitch,
-                          onChanged:
-                              (value) => ref
-                                  .read(settingsControllerProvider.notifier)
-                                  .setPitch(value),
+                          onChanged: (value) async {
+                            await ref
+                                .read(settingsControllerProvider.notifier)
+                                .setPitch(value);
+                            await ref
+                                .read(playbackControllerProvider.notifier)
+                                .applySettingsAndResume();
+                          },
                         ),
                         const _LuxuryDivider(),
                         _VolumeSlider(
                           value: settings.volume,
-                          onChanged:
-                              (value) => ref
-                                  .read(settingsControllerProvider.notifier)
-                                  .setVolume(value),
+                          onChanged: (value) async {
+                            await ref
+                                .read(settingsControllerProvider.notifier)
+                                .setVolume(value);
+                            await ref
+                                .read(playbackControllerProvider.notifier)
+                                .applySettingsAndResume();
+                          },
                         ),
                       ],
                     ),
@@ -112,21 +125,22 @@ class SettingsView extends ConsumerWidget {
                           title: 'Language',
                           subtitle:
                               settings.language.trim().isEmpty
-                                  ? 'English, Chinese, French...'
-                                  : settings.language,
+                                  ? 'English, Spanish, French...'
+                                  : ttsLanguageDisplayName(settings.language),
                           onTap:
                               () => _pickLanguage(
                                 context,
                                 ref,
                                 settings.language,
                               ),
+                          leadingIcon: Icons.language,
                         ),
                         const _InsetDivider(),
                         _SettingsRow(
-                          title: 'Selected Voice',
+                          title: 'Voice',
                           subtitle:
                               settings.voiceName.trim().isEmpty
-                                  ? 'Aria (Enhanced)'
+                                  ? 'Choose a voice'
                                   : settings.voiceName,
                           subtitleColor: VAColors.gold,
                           onTap: () => showVoicePickerSheet(context, ref),
@@ -135,48 +149,6 @@ class SettingsView extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    'APPEARANCE',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 3,
-                      color: VAColors.muted.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _LuxuryCard(
-                    child: Column(
-                      children: [
-                        _ToggleRow(
-                          title: 'Dark Mode',
-                          subtitle: 'Elegant obsidian theme',
-                          value: true,
-                          onChanged: (enabled) {},
-                        ),
-                        const _InsetDivider(),
-                        _ToggleRow(
-                          title: 'Auto-Scroll',
-                          subtitle: 'Follow reading progress',
-                          value: settings.autoScroll,
-                          onChanged:
-                              (enabled) => ref
-                                  .read(settingsControllerProvider.notifier)
-                                  .toggleAutoScroll(enabled),
-                        ),
-                        const _InsetDivider(),
-                        _ToggleRow(
-                          title: 'Haptic Feedback',
-                          subtitle: 'Subtle vibrations on events',
-                          value: settings.keepScreenOn,
-                          onChanged:
-                              (enabled) => ref
-                                  .read(settingsControllerProvider.notifier)
-                                  .toggleKeepScreenOn(enabled),
-                        ),
-                      ],
-                    ),
-                  ),
                   if (settingsAsync.hasError) ...[
                     const SizedBox(height: 16),
                     Text(
@@ -187,7 +159,7 @@ class SettingsView extends ConsumerWidget {
                   const SizedBox(height: 32),
                   Center(
                     child: Text(
-                      'VoxLux v2.4.1',
+                      'VoiceAloud Reader v1.0.0',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
@@ -344,7 +316,7 @@ class _ReadingSpeed extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Reading Speed',
+                'Speed',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: VAColors.cream.withValues(alpha: 0.9),
@@ -421,7 +393,7 @@ class _PitchSlider extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Voice Pitch',
+                'Pitch',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: VAColors.cream.withValues(alpha: 0.9),
@@ -429,7 +401,7 @@ class _PitchSlider extends StatelessWidget {
               ),
             ),
             Text(
-              'Standard',
+              'Normal',
               style: TextStyle(fontSize: 13, color: VAColors.muted),
             ),
           ],
@@ -510,12 +482,14 @@ class _SettingsRow extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.subtitleColor = VAColors.muted,
+    this.leadingIcon,
   });
 
   final String title;
   final String subtitle;
   final Color subtitleColor;
   final VoidCallback onTap;
+  final IconData? leadingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -526,6 +500,10 @@ class _SettingsRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
+            if (leadingIcon != null) ...[
+              Icon(leadingIcon, size: 22, color: VAColors.gold),
+              const SizedBox(width: 16),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -558,6 +536,40 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
+IconData _getLanguageIcon(String langCode) {
+  final code = langCode.toLowerCase().split('-').first.split('_').first;
+  switch (code) {
+    case 'ar':
+      return Icons.translate;
+    case 'zh':
+      return Icons.translate;
+    case 'hi':
+      return Icons.translate;
+    case 'th':
+      return Icons.translate;
+    case 'vi':
+      return Icons.translate;
+    case 'id':
+      return Icons.translate;
+    case 'ms':
+      return Icons.translate;
+    case 'tr':
+      return Icons.translate;
+    case 'pl':
+      return Icons.translate;
+    case 'nl':
+      return Icons.translate;
+    case 'el':
+      return Icons.translate;
+    case 'he':
+      return Icons.translate;
+    case 'ru':
+      return Icons.translate;
+    default:
+      return Icons.language;
+  }
+}
+
 Future<void> _pickLanguage(
   BuildContext context,
   WidgetRef ref,
@@ -586,7 +598,7 @@ Future<void> _pickLanguage(
                 return const Center(child: CircularProgressIndicator());
               }
               if (items.isEmpty) {
-                return const Center(child: Text('No languages found'));
+                return const Center(child: Text('No language found'));
               }
 
               return ListView.builder(
@@ -594,20 +606,60 @@ Future<void> _pickLanguage(
                 itemBuilder: (context, index) {
                   final lang = items[index];
                   final selected = lang == current;
+                  final label = ttsLanguageDisplayName(lang);
                   return ListTile(
-                    title: Text(lang, style: TextStyle(color: VAColors.cream)),
+                    leading: Icon(
+                      _getLanguageIcon(lang),
+                      color: selected ? VAColors.gold : VAColors.muted,
+                    ),
+                    title: Text(label, style: TextStyle(color: VAColors.cream)),
                     trailing:
                         selected
                             ? Icon(Icons.check, color: VAColors.gold)
                             : null,
                     onTap: () async {
-                      await ref
-                          .read(settingsControllerProvider.notifier)
-                          .setLanguage(lang);
-                      await ref
-                          .read(settingsControllerProvider.notifier)
-                          .setVoiceName('');
-                      if (context.mounted) Navigator.of(context).pop();
+                      final isApplying = ref.read(applyingSettingsProvider);
+                      if (isApplying) return;
+                      ref.read(applyingSettingsProvider.notifier).state = true;
+                      try {
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .setLanguage(lang);
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .setVoiceName('');
+                        final voices = await ref.read(
+                          availableVoicesProvider.future,
+                        );
+                        Map<String, dynamic>? pick;
+                        for (final v in voices) {
+                          final locale =
+                              (v['locale'] ?? v['Locale'] ?? '').toString();
+                          if (locale.startsWith(lang)) {
+                            pick = v;
+                            break;
+                          }
+                        }
+                        if (pick != null) {
+                          final name =
+                              (pick['name'] ?? pick['Name'] ?? '').toString();
+                          final locale =
+                              (pick['locale'] ?? pick['Locale'] ?? '')
+                                  .toString();
+                          if (name.trim().isNotEmpty) {
+                            await ref
+                                .read(settingsControllerProvider.notifier)
+                                .setVoiceName(name, voiceLocale: locale);
+                          }
+                        }
+                        await ref
+                            .read(playbackControllerProvider.notifier)
+                            .applySettingsAndResume();
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        ref.read(applyingSettingsProvider.notifier).state =
+                            false;
+                      }
                     },
                   );
                 },

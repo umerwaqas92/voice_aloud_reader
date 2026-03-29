@@ -55,6 +55,10 @@ class PlaybackController extends StateNotifier<PlaybackState> {
       await stop();
       return;
     }
+    if (state.wasCompleted && state.completedDocumentId == doc.id) {
+      await play(doc, startOffset: 0);
+      return;
+    }
     await play(doc, startOffset: _effectiveOffsetFor(doc));
   }
 
@@ -95,6 +99,8 @@ class PlaybackController extends StateNotifier<PlaybackState> {
       currentOffset: bounded,
       highlightStart: null,
       highlightEnd: null,
+      wasCompleted: false,
+      completedDocumentId: null,
       lastError: null,
     );
 
@@ -126,21 +132,21 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     await _tts.setSpeechRate(settings.speechRate);
     await _tts.setPitch(settings.pitch);
     await _tts.setVolume(settings.volume);
-    await _tts.setLanguage(settings.language);
-    await _tts.setVoiceByName(
-      settings.voiceName,
-      voiceLocale: settings.voiceLocale,
-    );
+    final locale = settings.voiceLocale.trim();
+    final language = locale.isNotEmpty ? locale : settings.language;
+    await _tts.setLanguage(language);
+    if (settings.voiceName.trim().isNotEmpty) {
+      await _tts.setVoiceByName(settings.voiceName, voiceLocale: locale);
+    }
   }
 
   /// Re-applies the latest settings to the active playback (if any) and keeps
   /// the listener at the current offset.
   Future<void> reapplySettingsIfPlaying() async {
     if (!state.isPlaying || state.documentId == null) return;
-    final doc =
-        ref
-            .read(documentsControllerProvider.notifier)
-            .getById(state.documentId!);
+    final doc = ref
+        .read(documentsControllerProvider.notifier)
+        .getById(state.documentId!);
     if (doc == null) return;
 
     final settings =
@@ -185,6 +191,8 @@ class PlaybackController extends StateNotifier<PlaybackState> {
       isPlaying: false,
       highlightStart: null,
       highlightEnd: null,
+      wasCompleted: true,
+      completedDocumentId: state.documentId,
       lastError: null,
     );
   }
@@ -199,34 +207,33 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     unawaited(WakelockPlus.toggle(enable: enabled));
   }
 
-  /// Applies latest settings (including voice) and, if currently playing,
-  /// restarts from the same offset with minimal delay.
-  Future<void> applyVoiceAndResume() async {
+  /// Applies latest settings and, if currently playing, restarts from the beginning
+  /// with the new voice/language settings.
+  Future<void> applySettingsAndResume() async {
     final settings =
         ref.read(settingsControllerProvider).valueOrNull ??
         VoiceAloudSettings.defaults;
 
     final isPlayingNow = state.isPlaying && state.documentId != null;
     final docId = state.documentId;
-    final currentOffset = state.currentOffset;
 
     _debouncedSeek?.cancel();
     await _tts.stop();
-    await _applySettings(settings);
-    await Future<void>.delayed(const Duration(milliseconds: 80));
 
-    if (!isPlayingNow || docId == null) return;
-    final doc =
-        ref
-            .read(documentsControllerProvider.notifier)
-            .getById(docId);
-    if (doc == null) return;
-
-    await play(
-      doc,
-      startOffset: currentOffset,
-      applySettings: false,
-      stopBefore: false,
-    );
+    if (isPlayingNow && docId != null) {
+      final doc = ref.read(documentsControllerProvider.notifier).getById(docId);
+      if (doc != null) {
+        await _applySettings(settings);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await play(
+          doc,
+          startOffset: 0,
+          applySettings: false,
+          stopBefore: false,
+        );
+      }
+    } else {
+      await _applySettings(settings);
+    }
   }
 }

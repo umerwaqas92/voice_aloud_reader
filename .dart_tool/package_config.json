@@ -686,7 +686,7 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "voxly",
+      "name": "voice_aloud_reader",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.7"

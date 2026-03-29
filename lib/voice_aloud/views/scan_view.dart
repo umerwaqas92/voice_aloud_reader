@@ -40,7 +40,9 @@ class _ScanViewState extends ConsumerState<ScanView>
   ProviderSubscription<VoiceAloudTab>? _tabSubscription;
   bool _allowAutoCapture = false;
   DateTime? _lastFocusAt;
-  ResolutionPreset _activeResolutionPreset = ResolutionPreset.veryHigh;
+  ResolutionPreset _activeResolutionPreset = ResolutionPreset.max;
+  Offset? _focusIndicatorPos;
+  Timer? _focusIndicatorTimer;
 
   Future<void> _disposeCamera({required bool updateState}) async {
     final camera = _camera;
@@ -103,6 +105,8 @@ class _ScanViewState extends ConsumerState<ScanView>
   @override
   void dispose() {
     _stopBackgroundOcrPolling();
+    _longPressTimer?.cancel();
+    _focusIndicatorTimer?.cancel();
     unawaited(_disposeCamera(updateState: false));
     _tabSubscription?.close();
     WidgetsBinding.instance.removeObserver(this);
@@ -185,6 +189,7 @@ class _ScanViewState extends ConsumerState<ScanView>
       CameraController? controller;
       Object? initError;
       for (final preset in const [
+        ResolutionPreset.max,
         ResolutionPreset.veryHigh,
         ResolutionPreset.high,
       ]) {
@@ -360,7 +365,36 @@ class _ScanViewState extends ConsumerState<ScanView>
       await camera.setExposureMode(ExposureMode.auto);
       _allowAutoCapture = true;
       _lastFocusAt = DateTime.now();
+      _showFocusIndicator(localPosition);
     } catch (_) {}
+  }
+
+  Timer? _longPressTimer;
+
+  void _startLongPressFocus(Offset localPosition, Size size) {
+    _longPressTimer?.cancel();
+    _longPressTimer = Timer(const Duration(milliseconds: 800), () {
+      _focusOnPoint(localPosition, size);
+    });
+  }
+
+  void _cancelLongPressFocus() {
+    _longPressTimer?.cancel();
+    _longPressTimer = null;
+  }
+
+  void _showFocusIndicator(Offset position) {
+    _focusIndicatorTimer?.cancel();
+    setState(() {
+      _focusIndicatorPos = position;
+    });
+    _focusIndicatorTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _focusIndicatorPos = null;
+        });
+      }
+    });
   }
 
   Future<void> _recognizeAndReview(
@@ -494,8 +528,10 @@ class _ScanViewState extends ConsumerState<ScanView>
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown:
-              (details) => _focusOnPoint(details.localPosition, size),
+          onTapDown: (details) => _focusOnPoint(details.localPosition, size),
+          onLongPressStart:
+              (details) => _startLongPressFocus(details.localPosition, size),
+          onLongPressEnd: (_) => _cancelLongPressFocus(),
           onScaleStart: (_) => _scaleBaseZoom = _zoom,
           onScaleUpdate: (details) async {
             if (_isBusy) return;
@@ -511,9 +547,7 @@ class _ScanViewState extends ConsumerState<ScanView>
               scale: scale,
               filterQuality: FilterQuality.none,
               alignment: Alignment.center,
-              child: Center(
-                child: CameraPreview(camera),
-              ),
+              child: Center(child: CameraPreview(camera)),
             ),
           ),
         );
@@ -572,120 +606,128 @@ class _ScanViewState extends ConsumerState<ScanView>
       child: ColoredBox(
         color: Colors.black,
         child: Stack(
-        children: [
-          Positioned.fill(child: _buildLivePreview()),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        _BlackCircleButton(
-                          onTap: () {
-                            ref
-                                .read(appControllerProvider.notifier)
-                                .setTab(VoiceAloudTab.library);
-                          },
-                          child: const LucideSvgIcon(
-                            'chevron-left',
-                            size: 22,
-                            color: Colors.white,
+          children: [
+            Positioned.fill(child: _buildLivePreview()),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          _BlackCircleButton(
+                            onTap: () {
+                              ref
+                                  .read(appControllerProvider.notifier)
+                                  .setTab(VoiceAloudTab.library);
+                            },
+                            child: const LucideSvgIcon(
+                              'chevron-left',
+                              size: 22,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        _BlackCircleButton(
-                          onTap: _toggleTorch,
-                          child: LucideSvgIcon(
-                            'zap',
-                            size: 20,
-                            color: _torchOn ? VAColors.yellow400 : Colors.white,
+                          const SizedBox(width: 10),
+                          _BlackCircleButton(
+                            onTap: _toggleTorch,
+                            child: LucideSvgIcon(
+                              'zap',
+                              size: 20,
+                              color:
+                                  _torchOn ? VAColors.yellow400 : Colors.white,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: _toggleZoom,
-                      child: _buildZoomPill(),
-                    ),
-                  ],
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: _toggleZoom,
+                        child: _buildZoomPill(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: _GlassPanel(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _GrayCircleButton(
-                          onTap: _pickFromGallery,
-                          child: const LucideSvgIcon(
-                            'image',
-                            size: 20,
-                            color: Colors.white,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _capture,
-                          child: Container(
-                            width: 84,
-                            height: 84,
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.95),
-                                width: 5,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x66000000),
-                                  blurRadius: 24,
-                                  offset: Offset(0, 12),
-                                ),
-                              ],
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: _GlassPanel(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _GrayCircleButton(
+                            onTap: _pickFromGallery,
+                            child: const LucideSvgIcon(
+                              'image',
+                              size: 20,
+                              color: Colors.white,
                             ),
+                          ),
+                          GestureDetector(
+                            onTap: _capture,
                             child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                              width: 84,
+                              height: 84,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  width: 5,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x66000000),
+                                    blurRadius: 24,
+                                    offset: Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 48, height: 48),
-                      ],
+                          const SizedBox(width: 48, height: 48),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          if (_isBusy || _isInitializing)
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+            if (_isBusy || _isInitializing)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
                 ),
               ),
-            ),
-        ],
+            if (_focusIndicatorPos != null)
+              Positioned(
+                left: _focusIndicatorPos!.dx - 30,
+                top: _focusIndicatorPos!.dy - 30,
+                child: _FocusIndicator(),
+              ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -989,9 +1031,7 @@ class _GlassPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.12),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x40000000),
@@ -1114,3 +1154,73 @@ const List<double> _desaturate50 = <double>[
   1,
   0,
 ];
+
+class _FocusIndicator extends StatefulWidget {
+  const _FocusIndicator();
+
+  @override
+  State<_FocusIndicator> createState() => _FocusIndicatorState();
+}
+
+class _FocusIndicatorState extends State<_FocusIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..forward();
+    _scaleAnimation = Tween<double>(
+      begin: 0.5,
+      end: 1.2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _opacityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacityAnimation.value,
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: VAColors.gold, width: 2),
+              ),
+              child: Center(
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: VAColors.gold,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

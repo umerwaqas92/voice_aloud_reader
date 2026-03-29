@@ -5,11 +5,11 @@ import 'voice_aloud/voice_aloud_root.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const VoxlyApp());
+  runApp(const VoiceAloudReaderApp());
 }
 
-class VoxlyApp extends StatelessWidget {
-  const VoxlyApp({super.key});
+class VoiceAloudReaderApp extends StatelessWidget {
+  const VoiceAloudReaderApp({super.key});
 
   static const _obsidian = Color(0xFF07070F);
   static const _gold = Color(0xFFC9A84C);
@@ -31,7 +31,7 @@ class VoxlyApp extends StatelessWidget {
     return ProviderScope(
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'VoxLux',
+        title: 'VoiceAloud Reader',
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: colorScheme,

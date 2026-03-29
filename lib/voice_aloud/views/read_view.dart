@@ -251,6 +251,33 @@ class ReadView extends ConsumerWidget {
                   isPlaying: isPlaying,
                   currentOffset: offset,
                   speechRate: settings.speechRate,
+                  onSpeedTap: () async {
+                    const presets = <double>[0.8, 1.0, 1.2, 1.5, 2.0];
+                    final current = settings.speechRate;
+                    final exactIndex = presets.indexWhere(
+                      (v) => (v - current).abs() < 0.01,
+                    );
+                    if (exactIndex != -1) {
+                      final nextRate =
+                          presets[(exactIndex + 1) % presets.length];
+                      await ref
+                          .read(settingsControllerProvider.notifier)
+                          .setSpeechRate(nextRate);
+                      await ref
+                          .read(playbackControllerProvider.notifier)
+                          .applySettingsAndResume();
+                      return;
+                    }
+                    final nextIndex = presets.indexWhere((v) => v > current);
+                    final nextRate =
+                        nextIndex == -1 ? presets.first : presets[nextIndex];
+                    await ref
+                        .read(settingsControllerProvider.notifier)
+                        .setSpeechRate(nextRate);
+                    await ref
+                        .read(playbackControllerProvider.notifier)
+                        .applySettingsAndResume();
+                  },
                   voiceName: settings.voiceName,
                   onOpenVoicePicker: () => showVoicePickerSheet(context, ref),
                   onTogglePlaying: onTogglePlaying,
@@ -768,6 +795,7 @@ class _LuxuryBottomPlayer extends StatelessWidget {
     required this.isPlaying,
     required this.currentOffset,
     required this.speechRate,
+    required this.onSpeedTap,
     required this.voiceName,
     required this.onOpenVoicePicker,
     required this.onTogglePlaying,
@@ -779,6 +807,7 @@ class _LuxuryBottomPlayer extends StatelessWidget {
   final bool isPlaying;
   final int currentOffset;
   final double speechRate;
+  final VoidCallback onSpeedTap;
   final String voiceName;
   final VoidCallback onOpenVoicePicker;
   final VoidCallback onTogglePlaying;
@@ -867,7 +896,10 @@ class _LuxuryBottomPlayer extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _SpeedButton(speechRate: speechRate),
+                  _SpeedButton(
+                    speechRate: speechRate,
+                    onTap: onSpeedTap,
+                  ),
                   const SizedBox(width: 16),
                   _SkipButton(
                     iconName: 'skip-back',
@@ -1008,33 +1040,41 @@ class _LuxuryWaveformState extends State<_LuxuryWaveform>
 }
 
 class _SpeedButton extends StatelessWidget {
-  const _SpeedButton({required this.speechRate});
+  const _SpeedButton({required this.speechRate, required this.onTap});
 
   final double speechRate;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: VAColors.gold.withValues(alpha: 0.06),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.bolt, size: 13, color: VAColors.gold),
-          const SizedBox(width: 4),
-          Text(
-            '${speechRate.toStringAsFixed(1)}x',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: VAColors.gold,
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: VAColors.gold.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: VAColors.gold.withValues(alpha: 0.15)),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.bolt, size: 13, color: VAColors.gold),
+              const SizedBox(width: 4),
+              Text(
+                '${speechRate.toStringAsFixed(1)}x',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: VAColors.gold,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

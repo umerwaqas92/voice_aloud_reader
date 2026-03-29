@@ -1,10 +1,10 @@
 {
   "roots": [
-    "voxly"
+    "voice_aloud_reader"
   ],
   "packages": [
     {
-      "name": "voxly",
+      "name": "voice_aloud_reader",
       "version": "1.0.0+1",
       "dependencies": [
         "camera",

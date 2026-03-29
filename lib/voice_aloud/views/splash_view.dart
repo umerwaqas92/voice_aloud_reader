@@ -91,7 +91,7 @@ class _SplashViewState extends State<SplashView> with SingleTickerProviderStateM
                     child: Column(
                       children: [
                         const Text(
-                          'Voxly',
+                          'VoiceAloud Reader',
                           style: TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.w900,
