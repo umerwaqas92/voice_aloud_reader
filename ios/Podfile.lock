@@ -100,6 +100,9 @@ PODS:
   - nanopb/encode (3.30910.0)
   - package_info_plus (0.4.5):
     - Flutter
+  - path_provider_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
@@ -120,6 +123,7 @@ DEPENDENCIES:
   - google_mlkit_text_recognition (from `.symlinks/plugins/google_mlkit_text_recognition/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
+  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
 
@@ -161,13 +165,15 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
+  path_provider_foundation:
+    :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   wakelock_plus:
     :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
-  camera_avfoundation: 281867ff09f1da66f031a184ecfbc6f2e625c9f5
+  camera_avfoundation: adb0207d868b2d873e895371d88448399ab78d87
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: b159e0c068aef54932bb15dc9fd1571818edaf49
@@ -181,7 +187,7 @@ SPEC CHECKSUMS:
   GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
-  image_picker_ios: 4f2f91b01abdb52842a8e277617df877e40f905b
+  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
   MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
   MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
   MLKitTextRecognition: 3b41f3ff084a79afb214408d25d2068d77ab322c
@@ -189,6 +195,7 @@ SPEC CHECKSUMS:
   MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
+  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf

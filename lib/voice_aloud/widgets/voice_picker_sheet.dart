@@ -27,6 +27,13 @@ String _nameOf(Map<String, dynamic> v) =>
 
 String _localeOf(Map<String, dynamic> v) =>
     (v['locale'] ?? v['Locale'] ?? '').toString();
+String _normLocale(String v) => v.trim().replaceAll('_', '-').toLowerCase();
+String _langCode(String v) {
+  final n = _normLocale(v);
+  if (n.isEmpty) return '';
+  final i = n.indexOf('-');
+  return i == -1 ? n : n.substring(0, i);
+}
 
 String _voiceKey(Map<String, dynamic> v) => '${_nameOf(v)}|${_localeOf(v)}';
 
@@ -53,7 +60,7 @@ bool _rowSelected(
   final loc = _localeOf(v);
   if (n != settings.voiceName) return false;
   if (settings.voiceLocale.isNotEmpty) {
-    return loc == settings.voiceLocale;
+    return _normLocale(loc) == _normLocale(settings.voiceLocale);
   }
   final sameNameCount = filtered.where((x) => _nameOf(x) == n).length;
   return sameNameCount == 1;
@@ -83,7 +90,10 @@ class VoicePickerSheet extends ConsumerWidget {
                     ? List<Map<String, dynamic>>.from(voices)
                     : voices.where((v) {
                       final locale = _localeOf(v);
-                      return locale.startsWith(language);
+                      final target = _normLocale(language);
+                      final localeNorm = _normLocale(locale);
+                      return localeNorm.startsWith(target) ||
+                          _langCode(localeNorm) == _langCode(target);
                     }).toList();
 
             if (filtered.isEmpty) {

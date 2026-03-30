@@ -1,17 +1,18 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import '../models/document.dart';
 import '../state/providers.dart';
 import '../va_tokens.dart';
 import '../voice_aloud_tab.dart';
 import '../widgets/animated_page_entrance.dart';
-import '../widgets/lucide_svg_icon.dart';
 import '../widgets/press_effect.dart';
-import 'recents_view.dart';
 import '_recent_placeholder_note.dart';
 
 class LibraryView extends ConsumerWidget {
@@ -327,6 +328,17 @@ Future<void> _showAddSheet(BuildContext context, WidgetRef ref) async {
                 },
               ),
               ListTile(
+                leading: Icon(Icons.picture_as_pdf, color: VAColors.gold),
+                title: Text(
+                  'Import PDF',
+                  style: TextStyle(color: VAColors.cream),
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _importPdf(context, ref);
+                },
+              ),
+              ListTile(
                 leading: Icon(Icons.paste, color: VAColors.gold),
                 title: Text(
                   'Paste text',
@@ -386,6 +398,9 @@ Future<void> _importTxt(BuildContext context, WidgetRef ref) async {
         source: DocumentSource.importTxt,
       );
   ref.read(appControllerProvider.notifier).openDocument(doc.id);
+  Future.delayed(const Duration(milliseconds: 500), () {
+    ref.read(playbackControllerProvider.notifier).play(doc, startOffset: 0);
+  });
 }
 
 Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
@@ -452,4 +467,98 @@ Future<void> _pasteText(BuildContext context, WidgetRef ref) async {
         source: DocumentSource.paste,
       );
   ref.read(appControllerProvider.notifier).openDocument(doc.id);
+  Future.delayed(const Duration(milliseconds: 500), () {
+    ref.read(playbackControllerProvider.notifier).play(doc, startOffset: 0);
+  });
+}
+
+Future<void> _importPdf(BuildContext context, WidgetRef ref) async {
+  final result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: const ['pdf'],
+    withData: true,
+  );
+  if (result == null || result.files.isEmpty) return;
+  final file = result.files.single;
+  final bytes = file.bytes;
+  final path = file.path;
+  Uint8List? data = bytes;
+  if (data == null && path != null && path.isNotEmpty) {
+    data = await File(path).readAsBytes();
+  }
+  if (data == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not read file')));
+    }
+    return;
+  }
+
+  try {
+    final pdf = PdfDocument(inputBytes: data);
+    final extracted = PdfTextExtractor(pdf).extractText();
+    pdf.dispose();
+    final content = _normalizePdfText(extracted);
+    if (content.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('PDF has no text')));
+      }
+      return;
+    }
+
+    final title = file.name.replaceAll(
+      RegExp(r'\\.pdf$', caseSensitive: false),
+      '',
+    );
+    final newDoc = await ref
+        .read(documentsControllerProvider.notifier)
+        .addFromText(
+          title: title.isEmpty ? 'Imported PDF' : title,
+          content: content,
+          source: DocumentSource.importPdf,
+        );
+    ref.read(appControllerProvider.notifier).openDocument(newDoc.id);
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (context.mounted) {
+      final docs = ref.read(documentsControllerProvider).valueOrNull ?? [];
+      final doc = docs.where((d) => d.id == newDoc.id).firstOrNull;
+      if (doc != null) {
+        await ref
+            .read(playbackControllerProvider.notifier)
+            .play(doc, startOffset: 0);
+      }
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to read PDF')));
+    }
+  }
+}
+
+String _normalizePdfText(String raw) {
+  var text = raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  text = text.replaceAll(RegExp(r'[ \t]+'), ' ');
+  text = text.replaceAll(RegExp(r'\n\s*\n'), '\n\n');
+  text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  final lines = text.split('\n');
+  final out = StringBuffer();
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+    if (line.isEmpty) {
+      if (i > 0 && i < lines.length - 1 && out.isNotEmpty) {
+        out.write('\n');
+      }
+      continue;
+    }
+    if (out.isNotEmpty && !out.toString().endsWith('\n')) {
+      out.write(' ');
+    }
+    out.write(line);
+  }
+  return out.toString().trim();
 }

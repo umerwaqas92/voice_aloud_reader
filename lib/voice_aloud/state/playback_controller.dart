@@ -25,9 +25,15 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     _tts.setErrorHandler(_onError);
   }
 
+  static const int _maxChunkSize = 5000;
+  static const int _minChunkSize = 1000;
+
   final Ref ref;
   final TtsService _tts;
 
+  String? _currentDocumentId;
+  List<_TextChunk> _chunks = [];
+  int _currentChunkIndex = 0;
   int _lastPersistedOffset = 0;
   DateTime _lastPersistAt = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _debouncedSeek;
@@ -79,16 +85,36 @@ class PlaybackController extends StateNotifier<PlaybackState> {
       await _tts.stop();
     }
 
-    final settings =
-        ref.read(settingsControllerProvider).valueOrNull ??
-        VoiceAloudSettings.defaults;
+    VoiceAloudSettings settings;
+    try {
+      settings = await ref.read(settingsControllerProvider.future);
+    } catch (_) {
+      settings =
+          ref.read(settingsControllerProvider).valueOrNull ??
+          VoiceAloudSettings.defaults;
+    }
     if (applySettings) {
       await _applySettings(settings);
-      // Small settle to avoid audible glitch when switching voices quickly.
       await Future<void>.delayed(const Duration(milliseconds: 80));
     }
 
-    final text = doc.content.substring(bounded);
+    _currentDocumentId = doc.id;
+    _chunks = _splitIntoChunks(doc.content);
+    _currentChunkIndex = 0;
+
+    if (bounded > 0) {
+      for (var i = 0; i < _chunks.length; i++) {
+        final chunk = _chunks[i];
+        final chunkEnd = chunk.startOffset + chunk.text.length;
+        if (bounded < chunkEnd) {
+          _currentChunkIndex = i;
+          final chunkText = doc.content.substring(bounded, chunkEnd);
+          _chunks[i] = _TextChunk(text: chunkText, startOffset: bounded);
+          break;
+        }
+      }
+    }
+
     _lastPersistedOffset = bounded;
     _lastPersistAt = DateTime.now();
 
@@ -105,7 +131,7 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     );
 
     _setScreenOn(settings.keepScreenOn);
-    unawaited(_tts.speak(text));
+    unawaited(_playCurrentChunk());
   }
 
   Future<void> seekTo(Document doc, int absoluteOffset) async {
@@ -156,10 +182,114 @@ class PlaybackController extends StateNotifier<PlaybackState> {
     await play(doc, startOffset: state.currentOffset);
   }
 
+  void _onError(String message) {
+    _setScreenOn(false);
+    state = state.copyWith(isPlaying: false, lastError: message);
+  }
+
+  void _setScreenOn(bool enabled) {
+    if (isInTest) return;
+    unawaited(WakelockPlus.toggle(enable: enabled));
+  }
+
+  /// Applies latest settings and, if currently playing, resumes from current
+  /// offset with the new voice/language settings.
+  Future<void> applySettingsAndResume() async {
+    final settings =
+        ref.read(settingsControllerProvider).valueOrNull ??
+        VoiceAloudSettings.defaults;
+
+    final isPlayingNow = state.isPlaying && state.documentId != null;
+    final docId = state.documentId;
+    final currentOffset = state.currentOffset;
+
+    _debouncedSeek?.cancel();
+    await _tts.stop();
+
+    if (isPlayingNow && docId != null) {
+      final doc = ref.read(documentsControllerProvider.notifier).getById(docId);
+      if (doc != null) {
+        await _applySettings(settings);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await play(
+          doc,
+          startOffset: currentOffset,
+          applySettings: false,
+          stopBefore: false,
+        );
+      }
+    } else {
+      await _applySettings(settings);
+    }
+  }
+
+  List<_TextChunk> _splitIntoChunks(String content) {
+    if (content.length <= _maxChunkSize) {
+      return [_TextChunk(text: content, startOffset: 0)];
+    }
+
+    final chunks = <_TextChunk>[];
+    var remaining = content;
+    var currentOffset = 0;
+
+    while (remaining.isNotEmpty) {
+      var chunkEnd = remaining.length;
+
+      if (remaining.length > _minChunkSize) {
+        chunkEnd = _findBestSplitPoint(remaining, _maxChunkSize);
+      }
+
+      final chunkText = remaining.substring(0, chunkEnd);
+      chunks.add(_TextChunk(text: chunkText, startOffset: currentOffset));
+
+      currentOffset += chunkEnd;
+      remaining = remaining.substring(chunkEnd);
+    }
+
+    return chunks;
+  }
+
+  int _findBestSplitPoint(String text, int maxPos) {
+    final candidates = ['\n\n', '\n', '. ', '! ', '? ', ', ', ' '];
+    var bestPos = maxPos;
+
+    for (final sep in candidates) {
+      final lastSep = text.lastIndexOf(sep, maxPos - 1);
+      if (lastSep > _minChunkSize) {
+        bestPos = lastSep + sep.length;
+        break;
+      }
+    }
+
+    return bestPos;
+  }
+
+  Future<void> _playCurrentChunk() async {
+    if (_chunks.isEmpty || _currentChunkIndex >= _chunks.length) {
+      _onComplete();
+      return;
+    }
+
+    final chunk = _chunks[_currentChunkIndex];
+    _lastPersistedOffset = chunk.startOffset;
+    _lastPersistAt = DateTime.now();
+
+    await _tts.speak(chunk.text);
+  }
+
   void _onProgress(String text, int start, int end, String word) {
-    if (state.documentId == null) return;
-    final absStart = state.baseOffset + start;
-    final absEnd = state.baseOffset + end;
+    if (state.documentId == null || _currentDocumentId != state.documentId) {
+      return;
+    }
+
+    final chunk =
+        _chunks.isNotEmpty && _currentChunkIndex < _chunks.length
+            ? _chunks[_currentChunkIndex]
+            : null;
+    final baseOffset = chunk?.startOffset ?? 0;
+
+    final absStart = baseOffset + start;
+    final absEnd = baseOffset + end;
     state = state.copyWith(
       currentOffset: absEnd,
       highlightStart: absStart,
@@ -186,7 +316,24 @@ class PlaybackController extends StateNotifier<PlaybackState> {
   }
 
   void _onComplete() {
+    if (_chunks.isEmpty) {
+      _finishPlayback();
+      return;
+    }
+
+    if (_currentChunkIndex < _chunks.length - 1) {
+      _currentChunkIndex++;
+      unawaited(_playCurrentChunk());
+    } else {
+      _finishPlayback();
+    }
+  }
+
+  void _finishPlayback() {
     _setScreenOn(false);
+    _chunks = [];
+    _currentChunkIndex = 0;
+    _currentDocumentId = null;
     state = state.copyWith(
       isPlaying: false,
       highlightStart: null,
@@ -196,44 +343,11 @@ class PlaybackController extends StateNotifier<PlaybackState> {
       lastError: null,
     );
   }
+}
 
-  void _onError(String message) {
-    _setScreenOn(false);
-    state = state.copyWith(isPlaying: false, lastError: message);
-  }
+class _TextChunk {
+  final String text;
+  final int startOffset;
 
-  void _setScreenOn(bool enabled) {
-    if (isInTest) return;
-    unawaited(WakelockPlus.toggle(enable: enabled));
-  }
-
-  /// Applies latest settings and, if currently playing, restarts from the beginning
-  /// with the new voice/language settings.
-  Future<void> applySettingsAndResume() async {
-    final settings =
-        ref.read(settingsControllerProvider).valueOrNull ??
-        VoiceAloudSettings.defaults;
-
-    final isPlayingNow = state.isPlaying && state.documentId != null;
-    final docId = state.documentId;
-
-    _debouncedSeek?.cancel();
-    await _tts.stop();
-
-    if (isPlayingNow && docId != null) {
-      final doc = ref.read(documentsControllerProvider.notifier).getById(docId);
-      if (doc != null) {
-        await _applySettings(settings);
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        await play(
-          doc,
-          startOffset: 0,
-          applySettings: false,
-          stopBefore: false,
-        );
-      }
-    } else {
-      await _applySettings(settings);
-    }
-  }
+  const _TextChunk({required this.text, required this.startOffset});
 }

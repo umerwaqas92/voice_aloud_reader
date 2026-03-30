@@ -40,8 +40,9 @@ class FlutterTtsService implements TtsService {
 
   @override
   Future<void> setLanguage(String language) async {
-    if (language.trim().isEmpty) return;
-    await _tts.setLanguage(language);
+    final normalized = _normalizeLocale(language);
+    if (normalized.isEmpty) return;
+    await _tts.setLanguage(normalized);
   }
 
   @override
@@ -61,20 +62,22 @@ class FlutterTtsService implements TtsService {
   }
 
   @override
-  Future<void> setVoiceByName(String voiceName, {String voiceLocale = ''}) async {
+  Future<void> setVoiceByName(
+    String voiceName, {
+    String voiceLocale = '',
+  }) async {
     if (voiceName.trim().isEmpty) return;
     final voices = await getVoices();
     final trimmedLocale = voiceLocale.trim();
-    String normalizeLocale(String value) =>
-        value.trim().replaceAll('_', '-').toLowerCase();
-    final normalizedLocale = normalizeLocale(trimmedLocale);
+    final normalizedLocale = _normalizeLocale(trimmedLocale);
+    final normalizedLanguage = _languageCode(normalizedLocale);
 
     Map<String, dynamic>? pick;
     if (normalizedLocale.isNotEmpty) {
       for (final v in voices) {
         final n = (v['name'] ?? v['Name'] ?? '').toString();
         final loc = (v['locale'] ?? v['Locale'] ?? '').toString();
-        final normalizedLoc = normalizeLocale(loc);
+        final normalizedLoc = _normalizeLocale(loc);
         if (n == voiceName &&
             (normalizedLoc == normalizedLocale ||
                 normalizedLoc.startsWith(normalizedLocale))) {
@@ -84,10 +87,26 @@ class FlutterTtsService implements TtsService {
       }
     }
 
+    if (pick == null && normalizedLanguage.isNotEmpty) {
+      for (final v in voices) {
+        final n = (v['name'] ?? v['Name'] ?? '').toString();
+        final loc = _normalizeLocale(
+          (v['locale'] ?? v['Locale'] ?? '').toString(),
+        );
+        if (n == voiceName && _languageCode(loc) == normalizedLanguage) {
+          pick = Map<String, dynamic>.from(v);
+          break;
+        }
+      }
+    }
+
     if (pick == null) {
-      final sameName = voices
-          .where((v) => (v['name'] ?? v['Name'] ?? '').toString() == voiceName)
-          .toList();
+      final sameName =
+          voices
+              .where(
+                (v) => (v['name'] ?? v['Name'] ?? '').toString() == voiceName,
+              )
+              .toList();
       if (sameName.isEmpty) return;
       pick = Map<String, dynamic>.from(sameName.first);
     }
@@ -125,5 +144,14 @@ class FlutterTtsService implements TtsService {
   @override
   Future<void> stop() async {
     await _tts.stop();
+  }
+
+  String _normalizeLocale(String value) => value.trim().replaceAll('_', '-');
+
+  String _languageCode(String locale) {
+    final normalized = _normalizeLocale(locale).toLowerCase();
+    if (normalized.isEmpty) return '';
+    final idx = normalized.indexOf('-');
+    return idx == -1 ? normalized : normalized.substring(0, idx);
   }
 }

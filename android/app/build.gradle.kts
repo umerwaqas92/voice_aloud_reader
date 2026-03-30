@@ -42,3 +42,12 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // google_mlkit_text_recognition references these for non-Latin scripts but marks them
+    // compileOnly; R8 release minification requires them on the app classpath.
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+}

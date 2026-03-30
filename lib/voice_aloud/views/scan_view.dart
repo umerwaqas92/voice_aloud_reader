@@ -505,6 +505,9 @@ class _ScanViewState extends ConsumerState<ScanView>
           source: source,
         );
     ref.read(appControllerProvider.notifier).openDocument(doc.id);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      ref.read(playbackControllerProvider.notifier).play(doc, startOffset: 0);
+    });
   }
 
   Widget _buildLivePreview() {

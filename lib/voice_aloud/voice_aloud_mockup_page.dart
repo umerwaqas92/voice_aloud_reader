@@ -128,7 +128,8 @@ class _VoiceAloudAppPageState extends ConsumerState<VoiceAloudAppPage> {
                   ),
                 ),
               ),
-              if (appState.activeTab != VoiceAloudTab.scan)
+              if (appState.activeTab != VoiceAloudTab.scan &&
+                  appState.activeTab != VoiceAloudTab.read)
                 _LuxuryBottomNavBar(
                   activeTab: appState.activeTab,
                   onChanged: _setActiveTab,

@@ -9,7 +9,6 @@ import '../state/providers.dart';
 import '../va_tokens.dart';
 import '../voice_aloud_tab.dart';
 import '../widgets/animated_page_entrance.dart';
-import '../widgets/blur_panel.dart';
 import '../widgets/lucide_svg_icon.dart';
 import '../widgets/voice_picker_sheet.dart';
 
@@ -44,7 +43,6 @@ class ReadView extends ConsumerWidget {
                 ? playback.currentOffset
                 : doc.lastReadOffset);
 
-    final theme = settings.themeMode;
     final bgColor = VAColors.obsidian;
     final textColor = VAColors.cream.withValues(alpha: 0.85);
     final titleColor = VAColors.cream;
@@ -119,23 +117,6 @@ class ReadView extends ConsumerWidget {
                                 color: mutedColor,
                               ),
                               onTap: () => showVoicePickerSheet(context, ref),
-                            ),
-                            const SizedBox(width: 4),
-                            _LuxuryCircleButton(
-                              icon: LucideSvgIcon(
-                                'list',
-                                size: 20,
-                                color: mutedColor,
-                              ),
-                              onTap:
-                                  doc == null
-                                      ? null
-                                      : () => _showOutlineSheet(
-                                        context,
-                                        ref,
-                                        doc,
-                                        settings,
-                                      ),
                             ),
                           ],
                         ),
@@ -232,10 +213,6 @@ class ReadView extends ConsumerWidget {
                           (size) => ref
                               .read(settingsControllerProvider.notifier)
                               .setFontSize(size),
-                      onThemeChanged:
-                          (mode) => ref
-                              .read(settingsControllerProvider.notifier)
-                              .setThemeMode(mode),
                     ),
                   ),
                 ),
@@ -480,10 +457,10 @@ class _ReaderScrollViewState extends State<_ReaderScrollView> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 200),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 140),
       child: Column(
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             widget.title.toUpperCase(),
             textAlign: TextAlign.center,
@@ -494,7 +471,7 @@ class _ReaderScrollViewState extends State<_ReaderScrollView> {
               color: VAColors.gold,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
           for (final entry in widget.paragraphs.indexed) ...[
             KeyedSubtree(
               key: _paragraphKeys[entry.$1],
@@ -580,30 +557,25 @@ class _LuxuryProgressBar extends StatelessWidget {
 }
 
 class _FontMenu extends StatelessWidget {
-  const _FontMenu({
-    required this.settings,
-    required this.onFontSizeChanged,
-    required this.onThemeChanged,
-  });
+  const _FontMenu({required this.settings, required this.onFontSizeChanged});
 
   final VoiceAloudSettings settings;
   final ValueChanged<double> onFontSizeChanged;
-  final ValueChanged<ReaderThemeMode> onThemeChanged;
 
+  static const _mini = 14.0;
   static const _small = 16.0;
   static const _large = 18.0;
 
   @override
   Widget build(BuildContext context) {
     final selectedSize = settings.fontSize;
-    final theme = settings.themeMode;
 
     return Container(
-      width: 260,
-      padding: const EdgeInsets.all(16),
+      width: 200,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: VAColors.panel,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: VAColors.gold.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
@@ -613,79 +585,29 @@ class _FontMenu extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'FONT SIZE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2,
-                  color: VAColors.muted,
-                ),
-              ),
-              Row(
-                children: [
-                  _FontSizeButton(
-                    text: 'A',
-                    fontSize: 14,
-                    selected:
-                        (selectedSize - _small).abs() <
-                        (selectedSize - _large).abs(),
-                    onTap: () => onFontSizeChanged(_small),
-                  ),
-                  const SizedBox(width: 8),
-                  _FontSizeButton(
-                    text: 'A',
-                    fontSize: 18,
-                    selected:
-                        (selectedSize - _large).abs() <=
-                        (selectedSize - _small).abs(),
-                    onTap: () => onFontSizeChanged(_large),
-                  ),
-                ],
-              ),
-            ],
+          _FontSizeButton(
+            text: 'A',
+            fontSize: 14,
+            label: 'Mini',
+            selected: (selectedSize - _mini).abs() < 0.5,
+            onTap: () => onFontSizeChanged(_mini),
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'THEME',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2,
-                  color: VAColors.muted,
-                ),
-              ),
-              Row(
-                children: [
-                  _ThemeButton(
-                    color: VAColors.obsidian,
-                    isSelected: theme == ReaderThemeMode.dark,
-                    onTap: () => onThemeChanged(ReaderThemeMode.dark),
-                  ),
-                  const SizedBox(width: 8),
-                  _ThemeButton(
-                    color: const Color(0xFF1C1712),
-                    isSelected: theme == ReaderThemeMode.light,
-                    onTap: () => onThemeChanged(ReaderThemeMode.light),
-                  ),
-                  const SizedBox(width: 8),
-                  _ThemeButton(
-                    color: VAColors.cream,
-                    isSelected: theme == ReaderThemeMode.sepia,
-                    onTap: () => onThemeChanged(ReaderThemeMode.sepia),
-                  ),
-                ],
-              ),
-            ],
+          _FontSizeButton(
+            text: 'A',
+            fontSize: 16,
+            label: 'Small',
+            selected: (selectedSize - _small).abs() < 0.5,
+            onTap: () => onFontSizeChanged(_small),
+          ),
+          _FontSizeButton(
+            text: 'A',
+            fontSize: 18,
+            label: 'Large',
+            selected: (selectedSize - _large).abs() < 0.5,
+            onTap: () => onFontSizeChanged(_large),
           ),
         ],
       ),
@@ -697,12 +619,14 @@ class _FontSizeButton extends StatelessWidget {
   const _FontSizeButton({
     required this.text,
     required this.fontSize,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
   final String text;
   final double fontSize;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
@@ -711,8 +635,8 @@ class _FontSizeButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 56,
+        height: 48,
         decoration: BoxDecoration(
           color:
               selected
@@ -724,18 +648,30 @@ class _FontSizeButton extends StatelessWidget {
                   ? Border.all(color: VAColors.gold.withValues(alpha: 0.3))
                   : null,
         ),
-        child: Center(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color:
-                  selected
-                      ? VAColors.goldBright
-                      : VAColors.cream.withValues(alpha: 0.7),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color:
+                    selected
+                        ? VAColors.goldBright
+                        : VAColors.cream.withValues(alpha: 0.7),
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w500,
+                color: selected ? VAColors.gold : VAColors.muted,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -896,10 +832,7 @@ class _LuxuryBottomPlayer extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _SpeedButton(
-                    speechRate: speechRate,
-                    onTap: onSpeedTap,
-                  ),
+                  _SpeedButton(speechRate: speechRate, onTap: onSpeedTap),
                   const SizedBox(width: 16),
                   _SkipButton(
                     iconName: 'skip-back',
@@ -918,10 +851,7 @@ class _LuxuryBottomPlayer extends StatelessWidget {
                     onTap: () => onSkip(15),
                   ),
                   const SizedBox(width: 16),
-                  _VoiceButton(
-                    voiceName: voiceName,
-                    onTap: onOpenVoicePicker,
-                  ),
+                  _VoiceButton(voiceName: voiceName, onTap: onOpenVoicePicker),
                 ],
               ),
             ],
@@ -1302,18 +1232,17 @@ class _LuxuryDropCapParagraph extends StatelessWidget {
   Widget build(BuildContext context) {
     final paragraphStyle = TextStyle(
       fontSize: fontSize,
-      height: 1.9,
+      height: 1.45,
       color: textColor,
     );
 
     if (!withDropCap || text.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.only(bottom: 8),
         child: Text(
           text,
-          textAlign: TextAlign.justify,
           style: paragraphStyle.copyWith(
-            color: textColor.withValues(alpha: 0.75),
+            color: textColor.withValues(alpha: 0.85),
           ),
         ),
       );
@@ -1323,29 +1252,28 @@ class _LuxuryDropCapParagraph extends StatelessWidget {
     final rest = text.substring(1);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Transform.translate(
-            offset: const Offset(0, -4),
+            offset: const Offset(0, -2),
             child: Text(
               first,
               style: paragraphStyle.copyWith(
-                fontSize: fontSize * 2.8,
+                fontSize: fontSize * 2.4,
                 height: 0.8,
                 fontWeight: FontWeight.w600,
                 color: VAColors.gold,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               rest,
-              textAlign: TextAlign.justify,
               style: paragraphStyle.copyWith(
-                color: textColor.withValues(alpha: 0.75),
+                color: textColor.withValues(alpha: 0.85),
               ),
             ),
           ),

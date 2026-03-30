@@ -8,8 +8,6 @@ import '../state/providers.dart';
 import '../utils/tts_language_display.dart';
 import '../va_tokens.dart';
 import '../widgets/animated_page_entrance.dart';
-import '../widgets/lucide_svg_icon.dart';
-import '../widgets/press_effect.dart';
 import '../widgets/voice_picker_sheet.dart';
 
 class SettingsView extends ConsumerWidget {
@@ -631,11 +629,22 @@ Future<void> _pickLanguage(
                         final voices = await ref.read(
                           availableVoicesProvider.future,
                         );
+                        String normLocale(String value) =>
+                            value.trim().replaceAll('_', '-').toLowerCase();
+                        String langCode(String locale) {
+                          final n = normLocale(locale);
+                          final idx = n.indexOf('-');
+                          return idx == -1 ? n : n.substring(0, idx);
+                        }
+
                         Map<String, dynamic>? pick;
                         for (final v in voices) {
                           final locale =
                               (v['locale'] ?? v['Locale'] ?? '').toString();
-                          if (locale.startsWith(lang)) {
+                          final localeNorm = normLocale(locale);
+                          final langNorm = normLocale(lang);
+                          if (localeNorm.startsWith(langNorm) ||
+                              langCode(localeNorm) == langCode(langNorm)) {
                             pick = v;
                             break;
                           }

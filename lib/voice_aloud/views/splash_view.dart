@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../va_tokens.dart';
-import '../widgets/animated_page_entrance.dart';
-import '../widgets/lucide_svg_icon.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -14,26 +12,20 @@ class SplashView extends StatefulWidget {
 class _SplashViewState extends State<SplashView>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
-  late Animation<double> _rotateAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat();
+      duration: const Duration(milliseconds: 1200),
+    );
 
-    _pulseAnimation = Tween<double>(
-      begin: 0.9,
-      end: 1.1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-    _rotateAnimation = Tween<double>(
+    _fadeAnimation = Tween<double>(
       begin: 0.0,
-      end: 0.5,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
   }
@@ -46,73 +38,83 @@ class _SplashViewState extends State<SplashView>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedPageEntrance(
-      child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [VAColors.outerBackground, Color(0xFF1E293B)],
-            ),
+    return Scaffold(
+      backgroundColor: VAColors.obsidian,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [VAColors.obsidian, VAColors.voidColor, VAColors.deep],
           ),
-          child: Stack(
-            children: [
-              Center(
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _pulseAnimation.value,
-                      child: Transform.rotate(
-                        angle: _rotateAnimation.value * 3.14159,
-                        child: Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: VAColors.gold.withValues(alpha: 0.3),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: VAColors.gold.withValues(alpha: 0.2),
-                                blurRadius: 40,
-                                spreadRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: const LucideSvgIcon(
-                            'book-open',
-                            size: 80,
-                            color: VAColors.gold,
-                            strokeWidth: 1.5,
-                          ),
-                        ),
+        ),
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: VAColors.panel,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: VAColors.gold.withValues(alpha: 0.2),
+                        width: 1.5,
                       ),
-                    );
-                  },
-                ),
-              ),
-              Positioned(
-                bottom: 80,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        VAColors.gold.withValues(alpha: 0.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: VAColors.gold.withValues(alpha: 0.15),
+                          blurRadius: 40,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.menu_book_rounded,
+                        size: 56,
+                        color: VAColors.gold,
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 32),
+                  Text(
+                    'VoiceAloud',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.2,
+                      color: VAColors.cream,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Reader',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 4,
+                      color: VAColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 64),
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        VAColors.gold.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

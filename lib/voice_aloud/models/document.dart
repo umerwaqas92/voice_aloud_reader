@@ -90,4 +90,4 @@ class Document {
   }
 }
 
-enum DocumentSource { unknown, importTxt, paste, scan }
+enum DocumentSource { unknown, importTxt, importPdf, paste, scan }
